@@ -127,7 +127,10 @@
             <tr v-else v-for="school in schools" :key="school.id" class="border-b border-gray-50 hover:bg-gray-50/80 transition-colors">
               <td class="p-4 pl-6">
                 <div class="flex items-center gap-4">
-                  <div class="w-10 h-10 rounded-full bg-blue-50 text-brand-blue font-black flex items-center justify-center shrink-0 border border-blue-100">
+                  <div v-if="school.logo_path" class="w-10 h-10 rounded-full bg-white border border-gray-200 overflow-hidden shrink-0">
+                    <img :src="school.logo_path.startsWith('http') ? school.logo_path : 'http://localhost:8000/storage/' + school.logo_path" class="w-full h-full object-cover" />
+                  </div>
+                  <div v-else class="w-10 h-10 rounded-full bg-blue-50 text-brand-blue font-black flex items-center justify-center shrink-0 border border-blue-100">
                     {{ school.name ? school.name.substring(0, 2).toUpperCase() : 'SC' }}
                   </div>
                   <div>
@@ -137,7 +140,13 @@
                 </div>
               </td>
               <td class="p-4 text-gray-600 font-medium">
-                <div class="flex items-center gap-1.5"><ion-icon :icon="locationOutline" class="text-gray-400 text-base"></ion-icon> {{ school.address || 'Sin dirección' }}</div>
+                <div class="flex items-center gap-2 max-w-[200px]">
+                   <ion-icon :icon="locationOutline" class="text-gray-400 text-base shrink-0"></ion-icon> 
+                   <span class="truncate">{{ school.address || 'Sin dirección' }}</span>
+                   <a v-if="school.address && school.address !== 'Por Definir'" :href="'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(school.address)" target="_blank" class="w-6 h-6 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center hover:bg-blue-100 transition-colors shrink-0" title="Abrir en Google Maps">
+                     <ion-icon :icon="navigateCircleOutline" class="text-lg"></ion-icon>
+                   </a>
+                </div>
               </td>
               <td class="p-4">
                 <p class="font-bold text-gray-900 leading-tight">{{ school.contact_phone || 'N/A' }}</p>
@@ -212,7 +221,7 @@ import { IonPage, IonContent, IonIcon } from '@ionic/vue';
 import { 
   addOutline, trendingUpOutline, business, push, documentText, grid,
   listOutline, searchOutline, filterOutline, locationOutline, eyeOutline, 
-  createOutline, documentTextOutline
+  createOutline, documentTextOutline, navigateCircleOutline
 } from 'ionicons/icons';
 import api from '@/services/api';
 

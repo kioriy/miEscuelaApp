@@ -26,6 +26,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('admin')->group(function () {
         Route::get('/stats', [AdminController::class, 'dashboardStats']);
         Route::get('/schools', [AdminController::class, 'getSchools']);
+        Route::post('/schools', [AdminController::class, 'storeSchool']);
         Route::get('/users', [AdminController::class, 'getUsers']);
+        Route::post('/users', [AdminController::class, 'storeUser']);
     });
 });
