@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Ionic Variables */
+:root {
+  --ion-color-primary: #207df3;
+  --ion-color-primary-rgb: 32,125,243;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255,255,255;
+  --ion-color-primary-shade: #1c6ee5;
+  --ion-color-primary-tint: #368af4;
+
+  --ion-font-family: 'Inter', sans-serif;
+  --ion-background-color: #f9fafb;
+}
+
+@media (prefers-color-scheme: dark) {
+  /*
+   * Dark Colors (We will keep light mode enforced for now in PWA)
+   */
+}
