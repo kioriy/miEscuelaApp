@@ -38,9 +38,12 @@
         <div class="bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden mb-6">
           
           <!-- Card Header -->
-          <div class="px-8 py-6 border-b border-gray-50 flex items-center gap-3">
-            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
-            <h2 class="text-xl font-bold text-gray-800">Agregar Nueva Escuela</h2>
+          <div class="px-8 py-6 border-b border-gray-50 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+              <h2 class="text-xl font-bold text-gray-800">{{ isEditMode ? 'Editar Escuela' : 'Agregar Nueva Escuela' }}</h2>
+            </div>
+            <span v-if="isEditMode" class="bg-blue-50 text-brand-blue border border-blue-100 px-3 py-1 rounded-full text-xs font-bold">ID: sch_{{ route.params.id }}</span>
           </div>
 
           <!-- Card Body -->
@@ -226,7 +229,7 @@
              </button>
              <button type="button" @click="submitForm" :disabled="isSubmitting" class="px-7 py-2.5 rounded-xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-600/20 transition-all active:scale-[0.98] flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
                <svg v-if="isSubmitting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-               {{ isSubmitting ? 'Guardando...' : 'Guardar Escuela' }}
+               {{ isSubmitting ? 'Guardando...' : (isEditMode ? 'Guardar Cambios' : 'Guardar Escuela') }}
              </button>
           </div>
 
@@ -262,14 +265,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, onMounted, computed } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { IonPage, IonContent } from '@ionic/vue';
 import api from '@/services/api';
 
 const router = useRouter();
+const route = useRoute();
 
 const isSubmitting = ref(false);
+const isLoadingData = ref(false);
+
+const isEditMode = computed(() => {
+  return !!route.params.id;
+});
 
 const form = ref({
   cct: '',
@@ -314,10 +323,16 @@ const submitForm = async () => {
 
   try {
     isSubmitting.value = true;
-    const response = await api.post('/admin/schools', form.value);
+    let response;
+
+    if (isEditMode.value) {
+        response = await api.put(`/admin/schools/${route.params.id}`, form.value);
+    } else {
+        response = await api.post('/admin/schools', form.value);
+    }
     
     if (response.data.success) {
-      alert('¡Escuela creada exitosamente! Se han generado ' + form.value.maxKiosks + ' kioscos.');
+      alert(isEditMode.value ? '¡Escuela actualizada exitosamente!' : '¡Escuela creada exitosamente! Se han generado ' + form.value.maxKiosks + ' kioscos.');
       router.push('/admin/schools');
     }
   } catch (error: any) {
@@ -327,6 +342,40 @@ const submitForm = async () => {
     isSubmitting.value = false;
   }
 };
+
+onMounted(async () => {
+  if (isEditMode.value) {
+    try {
+      isLoadingData.value = true;
+      const res = await api.get(`/admin/schools/${route.params.id}`);
+      if (res.data.success) {
+        const data = res.data.data;
+        form.value.cct = data.cct;
+        form.value.name = data.name;
+        form.value.address = data.address || '';
+        form.value.contact_phone = data.contact_phone || '';
+        form.value.timezone = data.timezone;
+        form.value.isActive = data.is_active === 1 || data.is_active === true;
+        // The kiosks amount might be locked after creation, so we just display the count
+        form.value.maxKiosks = data.kiosks?.length || 1;
+        
+        if (data.logo_path) {
+          logoPreview.value = data.logo_path.startsWith('http') ? data.logo_path : 'http://localhost:8000/storage/' + data.logo_path;
+        }
+        
+        if (data.kiosks && data.kiosks.length > 0) {
+            dummyKiosks.value = data.kiosks.map((k: any) => k.device_identifier);
+        }
+      }
+    } catch (error) {
+      console.error('Error cargando los datos de la escuela', error);
+      alert('Esta escuela no pudo ser encontrada.');
+      router.push('/admin/schools');
+    } finally {
+      isLoadingData.value = false;
+    }
+  }
+});
 
 </script>
 

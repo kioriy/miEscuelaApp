@@ -1,6 +1,9 @@
 <template>
   <ion-page>
     <ion-content class="ion-padding-bottom">
+      <ion-refresher slot="fixed" @ionRefresh="handleRefresh($event)">
+        <ion-refresher-content></ion-refresher-content>
+      </ion-refresher>
       <div class="p-8 lg:p-12 w-full max-w-[1400px] mx-auto min-h-full flex flex-col bg-gray-50">
         <!-- Header -->
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
@@ -9,6 +12,9 @@
             <p class="text-gray-500 font-medium">Supervisión global y acceso rápido a la gestión masiva de datos.</p>
           </div>
           <div class="flex items-center gap-3 shrink-0">
+            <button @click="fetchDashboardStats" class="bg-white border border-gray-200 text-gray-700 font-bold w-10 h-10 rounded-xl text-sm shadow-sm hover:bg-gray-50 flex items-center justify-center transition-all">
+              <ion-icon :icon="refreshOutline" class="text-lg"></ion-icon>
+            </button>
             <button class="bg-white border border-gray-200 text-gray-700 font-bold py-2.5 px-5 rounded-xl text-sm shadow-sm hover:bg-gray-50 flex items-center gap-2 transition-all">
               <ion-icon :icon="downloadOutline" class="text-lg"></ion-icon>
               Exportar Reporte
@@ -127,10 +133,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { IonPage, IonContent, IonIcon } from '@ionic/vue';
+import { IonPage, IonContent, IonIcon, IonRefresher, IonRefresherContent } from '@ionic/vue';
 import { 
   downloadOutline, addOutline, trendingUpOutline, business, 
-  push, documentText, grid
+  push, documentText, grid, refreshOutline
 } from 'ionicons/icons';
 import api from '@/services/api';
 
@@ -144,6 +150,7 @@ const stats = ref({
 });
 
 const fetchDashboardStats = async () => {
+  loading.value = true;
   try {
     const res = await api.get('/admin/stats');
     if (res.data.success) {
@@ -154,6 +161,11 @@ const fetchDashboardStats = async () => {
   } finally {
     loading.value = false;
   }
+};
+
+const handleRefresh = async (event: any) => {
+  await fetchDashboardStats();
+  event.target.complete();
 };
 
 onMounted(() => {

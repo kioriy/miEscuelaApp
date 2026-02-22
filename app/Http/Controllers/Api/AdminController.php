@@ -75,6 +75,7 @@ class AdminController extends Controller
         $school = \App\Models\School::create([
             'cct' => $request->cct,
             'name' => $request->name,
+            'slug' => \Illuminate\Support\Str::slug($request->name),
             'address' => $request->address,
             'contact_phone' => $request->contact_phone,
             'logo_path' => $logoPath,
@@ -87,7 +88,7 @@ class AdminController extends Controller
         for ($i = 0; $i < $kiosksQty; $i++) {
             \App\Models\Kiosk::create([
                 'school_id' => $school->id,
-                'device_identifier' => 'K-' . strtoupper(substr(uniqid(), -4)) . '-' . mt_rand(10, 99)
+                'activation_code' => 'K-' . strtoupper(substr(uniqid(), -4)) . '-' . mt_rand(10, 99)
             ]);
         }
 
@@ -132,6 +133,94 @@ class AdminController extends Controller
             'success' => true,
             'message' => 'Usuario invitado exitosamente.',
             'data' => $user
+        ]);
+    }
+
+    public function showUser($id)
+    {
+        $user = \App\Models\User::with('school')->findOrFail($id);
+        return response()->json(['success' => true, 'data' => $user]);
+    }
+
+    public function updateUser(Request $request, $id)
+    {
+        $user = \App\Models\User::findOrFail($id);
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'role' => 'required|string|in:super_admin,admin,teacher,parent',
+            'school_id' => 'nullable|exists:schools,id'
+        ]);
+
+        $user->update([
+            'name' => $request->name,
+            'email' => $request->email,
+            'role' => $request->role,
+            'school_id' => $request->school_id
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Usuario actualizado exitosamente.', 'data' => $user]);
+    }
+
+    public function showSchool($id)
+    {
+        $school = \App\Models\School::with('kiosks')->findOrFail($id);
+        return response()->json(['success' => true, 'data' => $school]);
+    }
+
+    public function updateSchool(Request $request, $id)
+    {
+        $school = \App\Models\School::findOrFail($id);
+
+        $request->validate([
+            'cct' => 'required|string|max:50|unique:schools,cct,' . $school->id,
+            'name' => 'required|string|max:255',
+            'address' => 'nullable|string|max:255',
+            'contact_phone' => 'nullable|string|max:50',
+            'logo_base64' => 'nullable|string',
+            'timezone' => 'required|string',
+            'isActive' => 'boolean',
+            'maxKiosks' => 'nullable|integer|min:0'
+        ]);
+
+        $logoPath = $school->logo_path;
+        if ($request->filled('logo_base64') && strpos($request->logo_base64, 'data:image') === 0) {
+            $image_parts = explode(";base64,", $request->logo_base64);
+            if (count($image_parts) == 2) {
+                $image_type_aux = explode("image/", $image_parts[0]);
+                $image_type = $image_type_aux[1] ?? 'png';
+                $image_base64 = base64_decode($image_parts[1]);
+                $fileName = 'logo_' . time() . '_' . uniqid() . '.' . $image_type;
+                \Illuminate\Support\Facades\Storage::disk('public')->put('schools/logos/' . $fileName, $image_base64);
+                $logoPath = 'schools/logos/' . $fileName;
+            }
+        }
+
+        $school->update([
+            'cct' => $request->cct,
+            'name' => $request->name,
+            'slug' => $school->name !== $request->name ? \Illuminate\Support\Str::slug($request->name) : $school->slug,
+            'address' => $request->address,
+            'contact_phone' => $request->contact_phone,
+            'logo_path' => $logoPath,
+            'timezone' => $request->timezone,
+            'is_active' => $request->isActive,
+        ]);
+
+        if ($request->filled('maxKiosks') && $request->maxKiosks > $school->kiosks()->count()) {
+            $toAdd = $request->maxKiosks - $school->kiosks()->count();
+            for ($i = 0; $i < $toAdd; $i++) {
+                \App\Models\Kiosk::create([
+                    'school_id' => $school->id,
+                    'activation_code' => 'K-' . strtoupper(substr(uniqid(), -4)) . '-' . mt_rand(10, 99)
+                ]);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Escuela actualizada exitosamente.',
+            'data' => $school
         ]);
     }
 }

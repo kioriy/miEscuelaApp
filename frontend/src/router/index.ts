@@ -27,6 +27,7 @@ const routes: Array<RouteRecordRaw> = [
   {
     path: '/admin',
     component: AdminLayout,
+    meta: { requiresAuth: true },
     children: [
       {
         path: '',
@@ -48,6 +49,11 @@ const routes: Array<RouteRecordRaw> = [
         component: SchoolFormView
       },
       {
+        path: 'schools/:id/edit',
+        name: 'SchoolEdit',
+        component: SchoolFormView
+      },
+      {
         path: 'users',
         name: 'AdminUsers',
         component: UsersView
@@ -55,6 +61,11 @@ const routes: Array<RouteRecordRaw> = [
       {
         path: 'users/create',
         name: 'UserForm',
+        component: UserFormView
+      },
+      {
+        path: 'users/:id/edit',
+        name: 'UserEdit',
         component: UserFormView
       }
     ]

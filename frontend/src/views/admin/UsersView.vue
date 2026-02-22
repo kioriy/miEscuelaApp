@@ -1,6 +1,9 @@
 <template>
   <ion-page>
     <ion-content class="ion-padding-bottom">
+      <ion-refresher slot="fixed" @ionRefresh="handleRefresh($event)">
+        <ion-refresher-content></ion-refresher-content>
+      </ion-refresher>
       <div class="p-8 lg:p-12 w-full max-w-[1400px] mx-auto min-h-full flex flex-col bg-gray-50">
     <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
@@ -8,11 +11,14 @@
         <h1 class="text-[32px] font-black text-gray-900 tracking-tight leading-none mb-2">Administración de Usuarios del Sistema</h1>
         <p class="text-gray-500 font-medium">Gestiona el personal y los niveles de acceso en todas las instituciones.</p>
       </div>
-      <div class="flex items-center gap-3 shrink-0">
-        <button class="bg-white border border-gray-200 text-gray-700 font-bold py-2.5 px-5 rounded-xl text-sm shadow-sm hover:bg-gray-50 flex items-center gap-2 transition-all">
-          <ion-icon :icon="downloadOutline" class="text-lg"></ion-icon>
-          Exportar Lista
-        </button>
+          <div class="flex items-center gap-3 shrink-0">
+            <button @click="fetchUsers(true)" class="bg-white border border-gray-200 text-gray-700 font-bold w-10 h-10 rounded-xl text-sm shadow-sm hover:bg-gray-50 flex items-center justify-center transition-all">
+              <ion-icon :icon="refreshOutline" class="text-lg"></ion-icon>
+            </button>
+            <button class="bg-white border border-gray-200 text-gray-700 font-bold py-2.5 px-5 rounded-xl text-sm shadow-sm hover:bg-gray-50 flex items-center gap-2 transition-all">
+              <ion-icon :icon="downloadOutline" class="text-lg"></ion-icon>
+              Exportar Lista
+            </button>
         <button @click="$router.push('/admin/users/create')" class="bg-brand-blue text-white font-bold py-2.5 px-5 rounded-xl text-sm shadow-md shadow-blue-500/20 hover:bg-blue-600 flex items-center gap-2 transition-all">
           <ion-icon :icon="personAddOutline" class="text-lg"></ion-icon>
           Invitar Usuario
@@ -139,7 +145,7 @@
               </td>
               <td class="p-4 pr-6">
                 <div class="flex items-center justify-end gap-3 text-gray-400">
-                  <button class="hover:text-gray-900 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"><ion-icon :icon="createOutline"></ion-icon></button>
+                  <button @click="$router.push(`/admin/users/${user.id}/edit`)" class="hover:text-gray-900 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"><ion-icon :icon="createOutline"></ion-icon></button>
                   <button class="hover:text-red-500 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors"><ion-icon :icon="trashOutline"></ion-icon></button>
                 </div>
               </td>
@@ -196,10 +202,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { IonPage, IonContent, IonIcon } from '@ionic/vue';
+import { IonPage, IonContent, IonIcon, IonRefresher, IonRefresherContent } from '@ionic/vue';
 import { 
   downloadOutline, personAddOutline, searchOutline, chevronDown, filter,
-  createOutline, trashOutline, push, documentText, grid
+  createOutline, trashOutline, push, documentText, grid, refreshOutline
 } from 'ionicons/icons';
 import api from '@/services/api';
 
@@ -229,7 +235,8 @@ const fetchDashboardStats = async () => {
   }
 };
 
-const fetchUsers = async () => {
+const fetchUsers = async (forceRefresh = false) => {
+  if (forceRefresh) loadingUsers.value = true;
   try {
     const res = await api.get('/admin/users');
     if (res.data.success) {
@@ -240,6 +247,14 @@ const fetchUsers = async () => {
   } finally {
     loadingUsers.value = false;
   }
+};
+
+const handleRefresh = async (event: any) => {
+  await Promise.all([
+    fetchDashboardStats(),
+    fetchUsers(true)
+  ]);
+  event.target.complete();
 };
 
 onMounted(() => {

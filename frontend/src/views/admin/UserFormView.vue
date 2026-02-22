@@ -40,11 +40,11 @@
             <svg class="w-4 h-4 mx-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
             <button @click="$router.push('/admin/users')" class="hover:text-blue-600 transition-colors">Usuarios</button>
             <svg class="w-4 h-4 mx-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-            <span class="text-gray-900 font-bold">Nuevo Usuario Simplificado</span>
+            <span class="text-gray-900 font-bold">{{ isEditMode ? 'Edición de Usuario' : 'Nuevo Usuario Simplificado' }}</span>
           </nav>
 
-          <h1 class="text-[32px] font-black text-gray-900 tracking-tight leading-none mb-2">Crear Nuevo Usuario</h1>
-          <p class="text-gray-600 font-medium text-[15px]">Complete la información para registrar un nuevo integrante en el sistema.</p>
+          <h1 class="text-[32px] font-black text-gray-900 tracking-tight leading-none mb-2">{{ isEditMode ? 'Editar Usuario' : 'Crear Nuevo Usuario' }}</h1>
+          <p class="text-gray-600 font-medium text-[15px]">{{ isEditMode ? 'Modifique los atributos y permisos del integrante del sistema.' : 'Complete la información para registrar un nuevo integrante en el sistema.' }}</p>
         </div>
 
         <!-- Form Card -->
@@ -149,7 +149,7 @@
              <button type="button" @click="submitForm" :disabled="isSubmitting" class="px-8 py-3 rounded-xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-600/20 active:scale-[0.98] transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
                <svg v-if="isSubmitting" class="animate-spin -ml-1 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                <svg v-else class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 7a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V7z"></path></svg>
-               {{ isSubmitting ? 'Registrando...' : 'Registrar Usuario' }}
+               {{ isSubmitting ? 'Guardando...' : (isEditMode ? 'Actualizar Usuario' : 'Registrar Usuario') }}
              </button>
           </div>
 
@@ -190,14 +190,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, onMounted, computed } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { IonPage, IonContent } from '@ionic/vue';
 import api from '@/services/api';
 
 const router = useRouter();
+const route = useRoute();
 
 const isSubmitting = ref(false);
+const isLoadingData = ref(false);
+
+const isEditMode = computed(() => {
+  return !!route.params.id;
+});
 
 const form = ref({
   name: '',
@@ -228,16 +234,22 @@ const submitForm = async () => {
 
   try {
     isSubmitting.value = true;
-    const response = await api.post('/admin/users', form.value);
+    let response;
+    
+    if (isEditMode.value) {
+        response = await api.put(`/admin/users/${route.params.id}`, form.value);
+    } else {
+        response = await api.post('/admin/users', form.value);
+    }
     
     if (response.data.success) {
-      alert('¡Usuario invitado exitosamente!');
+      alert(isEditMode.value ? '¡Usuario actualizado exitosamente!' : '¡Usuario invitado exitosamente!');
       router.push('/admin/users');
     }
   } catch (error: any) {
-    console.error('Error al invitar usuario:', error);
+    console.error('Error al guardar el usuario:', error);
     if (error.response?.data?.errors?.email) {
-       alert('Ese correo ya se encuentra registrado en el sistema.');
+       alert('Ese correo ya se encuentra registrado en el sistema por otro usuario.');
     } else {
        alert(error.response?.data?.message || 'Error al conectar con el servidor.');
     }
@@ -246,7 +258,30 @@ const submitForm = async () => {
   }
 };
 
+const loadUserData = async () => {
+  if (!isEditMode.value) return;
+  
+  try {
+    isLoadingData.value = true;
+    const res = await api.get(`/admin/users/${route.params.id}`);
+    if (res.data.success) {
+      const data = res.data.data;
+      form.value.name = data.name;
+      form.value.email = data.email;
+      form.value.role = data.role;
+      form.value.school_id = data.school_id || '';
+    }
+  } catch (error) {
+    console.error('Error cargando los datos del usuario', error);
+    alert('Este usuario no pudo ser encontrado.');
+    router.push('/admin/users');
+  } finally {
+    isLoadingData.value = false;
+  }
+};
+
 onMounted(() => {
   fetchSchools();
+  loadUserData();
 });
 </script>

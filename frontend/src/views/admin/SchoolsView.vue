@@ -1,6 +1,9 @@
 <template>
   <ion-page>
     <ion-content class="ion-padding-bottom">
+      <ion-refresher slot="fixed" @ionRefresh="handleRefresh($event)">
+        <ion-refresher-content></ion-refresher-content>
+      </ion-refresher>
       <div class="p-8 lg:p-12 w-full max-w-[1400px] mx-auto min-h-full flex flex-col bg-gray-50">
     <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
@@ -8,11 +11,14 @@
         <h1 class="text-[32px] font-black text-gray-900 tracking-tight leading-none mb-2">Administración de Escuelas</h1>
         <p class="text-gray-500 font-medium">Gestión integral de las instituciones educativas registradas en el sistema.</p>
       </div>
-      <div class="flex items-center gap-3 shrink-0">
-        <button class="bg-white border border-gray-200 text-gray-700 font-bold py-2.5 px-5 rounded-xl text-sm shadow-sm hover:bg-gray-50 flex items-center gap-2 transition-all">
-          <ion-icon :icon="documentTextOutline" class="text-lg"></ion-icon>
-          Carga Masiva de Alumnos
-        </button>
+          <div class="flex items-center gap-3 shrink-0">
+            <button @click="fetchSchools(true)" class="bg-white border border-gray-200 text-gray-700 font-bold w-10 h-10 rounded-xl text-sm shadow-sm hover:bg-gray-50 flex items-center justify-center transition-all">
+              <ion-icon :icon="refreshOutline" class="text-lg"></ion-icon>
+            </button>
+            <button class="bg-white border border-gray-200 text-gray-700 font-bold py-2.5 px-5 rounded-xl text-sm shadow-sm hover:bg-gray-50 flex items-center gap-2 transition-all">
+              <ion-icon :icon="documentTextOutline" class="text-lg"></ion-icon>
+              Carga Masiva de Alumnos
+            </button>
         <button @click="$router.push('/admin/schools/create')" class="bg-brand-blue text-white font-bold py-2.5 px-5 rounded-xl text-sm shadow-md shadow-blue-500/20 hover:bg-blue-600 flex items-center gap-2 transition-all">
           <ion-icon :icon="addOutline" class="text-lg"></ion-icon>
           Agregar Nueva Escuela
@@ -161,7 +167,7 @@
               <td class="p-4 pr-6">
                 <div class="flex items-center justify-end gap-4 text-gray-400">
                   <button class="hover:text-brand-blue flex items-center gap-1 font-bold text-[13px] transition-colors"><ion-icon :icon="eyeOutline"></ion-icon> Ver</button>
-                  <button class="hover:text-gray-900 flex items-center gap-1 font-bold text-[13px] transition-colors"><ion-icon :icon="createOutline"></ion-icon> Editar</button>
+                  <button @click="$router.push(`/admin/schools/${school.id}/edit`)" class="hover:text-gray-900 flex items-center gap-1 font-bold text-[13px] transition-colors"><ion-icon :icon="createOutline"></ion-icon> Editar</button>
                 </div>
               </td>
             </tr>
@@ -217,11 +223,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { IonPage, IonContent, IonIcon } from '@ionic/vue';
+import { IonPage, IonContent, IonIcon, IonRefresher, IonRefresherContent } from '@ionic/vue';
 import { 
   addOutline, trendingUpOutline, business, push, documentText, grid,
   listOutline, searchOutline, filterOutline, locationOutline, eyeOutline, 
-  createOutline, documentTextOutline, navigateCircleOutline
+  createOutline, documentTextOutline, navigateCircleOutline, refreshOutline
 } from 'ionicons/icons';
 import api from '@/services/api';
 
@@ -251,7 +257,8 @@ const fetchDashboardStats = async () => {
   }
 };
 
-const fetchSchools = async () => {
+const fetchSchools = async (forceRefresh = false) => {
+  if (forceRefresh) loadingSchools.value = true;
   try {
     const res = await api.get('/admin/schools');
     if (res.data.success) {
@@ -262,6 +269,14 @@ const fetchSchools = async () => {
   } finally {
     loadingSchools.value = false;
   }
+};
+
+const handleRefresh = async (event: any) => {
+  await Promise.all([
+    fetchDashboardStats(),
+    fetchSchools(true)
+  ]);
+  event.target.complete();
 };
 
 onMounted(() => {
