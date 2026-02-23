@@ -53,11 +53,16 @@
           <!-- Top: Profile Pic Upload -->
           <div class="flex items-center gap-5 mb-8">
             <div class="w-20 h-20 rounded-2xl bg-blue-50/50 border border-dashed border-blue-200 flex items-center justify-center text-blue-400 cursor-pointer hover:bg-blue-50 transition-colors relative overflow-hidden group">
-              <svg class="w-8 h-8 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+              <input type="file" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" @change="onPhotoChange" />
+              <div v-if="photoPreview" class="absolute inset-0 w-full h-full">
+                <img :src="photoPreview" class="w-full h-full object-cover rounded-2xl" />
+              </div>
+              <div v-else class="flex items-center justify-center w-full h-full">
+                <svg class="w-8 h-8 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+              </div>
               <div class="absolute inset-0 bg-black/40 items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hidden md:flex">
                  <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
               </div>
-              <input type="file" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/png, image/jpeg" />
             </div>
             <div>
               <h3 class="text-lg font-bold text-gray-900 leading-tight">Foto de Perfil</h3>
@@ -117,7 +122,7 @@
                   <select v-model="form.role" class="w-full pl-11 pr-10 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all text-gray-700 bg-white appearance-none cursor-pointer">
                     <option value="" disabled>Seleccione un rol</option>
                     <option value="super_admin">Súper Admin / Sistemas</option>
-                    <option value="admin">Administrador (Director)</option>
+                    <option value="director">Administrador (Director)</option>
                     <option value="teacher">Profesor</option>
                     <option value="parent">Padre / Tutor</option>
                   </select>
@@ -128,17 +133,16 @@
              </div>
           </div>
 
-          <!-- Email Invitation Checkbox -->
-          <div class="bg-gray-50/80 border border-gray-100 rounded-3xl p-5 flex items-start gap-4 mb-8 group cursor-pointer hover:bg-gray-50 transition-colors" @click="form.sendInvite = !form.sendInvite">
-            <div class="pt-0.5">
-              <div class="w-6 h-6 rounded bg-white border-2 flex items-center justify-center transition-colors" :class="form.sendInvite ? 'bg-blue-600 border-blue-600' : 'border-gray-300 group-hover:border-blue-400'">
-                <svg v-if="form.sendInvite" class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
-              </div>
-            </div>
+          <!-- Resend Email Button (Edit Mode Only) -->
+          <div v-if="isEditMode" class="bg-blue-50/50 border border-blue-100 rounded-3xl p-5 flex items-center justify-between gap-4 mb-8">
             <div>
-               <h4 class="text-[15px] font-bold text-gray-900 mb-0.5">Enviar invitación por correo</h4>
-               <p class="text-[13px] text-gray-500 font-medium">Se enviará un enlace automático para que el usuario configure su contraseña.</p>
+               <h4 class="text-[15px] font-bold text-gray-900 mb-0.5">Reenviar correo de bienvenida</h4>
+               <p class="text-[13px] text-gray-500 font-medium">Si el usuario no recibió sus accesos, puedes enviárselos nuevamente.</p>
             </div>
+            <button type="button" @click="resendWelcomeEmail" :disabled="isResending" class="px-5 py-2.5 rounded-xl font-bold text-sm text-brand-blue bg-blue-100 hover:bg-blue-200 transition-colors flex items-center gap-2 disabled:opacity-50">
+              <ion-icon name="mail-outline" class="text-lg"></ion-icon>
+              {{ isResending ? 'Enviando...' : 'Reenviar Correo' }}
+            </button>
           </div>
 
           <!-- Actions -->
@@ -210,8 +214,26 @@ const form = ref({
   email: '',
   school_id: '',
   role: '',
-  sendInvite: true
+  photo_base64: ''
 });
+
+const photoPreview = ref<string | null>(null);
+
+const onPhotoChange = (event: any) => {
+  const file = event.target.files[0];
+  if (file) {
+    if (file.size > 5 * 1024 * 1024) {
+      alert('La imagen no debe superar los 5MB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      photoPreview.value = e.target?.result as string;
+      form.value.photo_base64 = photoPreview.value;
+    };
+    reader.readAsDataURL(file);
+  }
+};
 
 const schools = ref<any[]>([]);
 
@@ -223,6 +245,23 @@ const fetchSchools = async () => {
     }
   } catch (error) {
     console.error('Error fetching schools for dropdown', error);
+  }
+};
+
+const isResending = ref(false);
+
+const resendWelcomeEmail = async () => {
+  isResending.value = true;
+  try {
+    const res = await api.post(`/admin/users/${route.params.id}/resend-welcome`);
+    if (res.data.success) {
+      alert('Correo reenviado exitosamente.');
+    }
+  } catch (error: any) {
+    console.error('Error al reenviar correo', error);
+    alert(error.response?.data?.message || 'Hubo un error al reenviar el correo.');
+  } finally {
+    isResending.value = false;
   }
 };
 
@@ -248,8 +287,10 @@ const submitForm = async () => {
     }
   } catch (error: any) {
     console.error('Error al guardar el usuario:', error);
-    if (error.response?.data?.errors?.email) {
-       alert('Ese correo ya se encuentra registrado en el sistema por otro usuario.');
+    if (error.response?.data?.errors) {
+       const errors = error.response.data.errors;
+       const errorMessages = Object.values(errors).flat().join('\n');
+       alert('Errores de validación:\n' + errorMessages);
     } else {
        alert(error.response?.data?.message || 'Error al conectar con el servidor.');
     }
@@ -270,6 +311,9 @@ const loadUserData = async () => {
       form.value.email = data.email;
       form.value.role = data.role;
       form.value.school_id = data.school_id || '';
+      if (data.profile_photo_path) {
+          photoPreview.value = `http://127.0.0.1:8000/storage/${data.profile_photo_path}`;
+      }
     }
   } catch (error) {
     console.error('Error cargando los datos del usuario', error);

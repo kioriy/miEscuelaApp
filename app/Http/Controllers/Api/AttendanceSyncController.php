@@ -11,6 +11,34 @@ use Illuminate\Support\Facades\Log;
 class AttendanceSyncController extends Controller
 {
     /**
+     * Obtiene estadísticas rápidas de hoy para el monitor.
+     */
+    public function getKioskStats(Request $request)
+    {
+        $schoolId = $request->user()->school_id;
+        $today = now()->startOfDay();
+
+        $entries = AttendanceLog::where('school_id', $schoolId)
+            ->where('scanned_at', '>=', $today)
+            ->where('type', 'in')
+            ->count();
+
+        $exits = AttendanceLog::where('school_id', $schoolId)
+            ->where('scanned_at', '>=', $today)
+            ->where('type', 'out')
+            ->count();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'entries' => $entries,
+                'exits' => $exits,
+                'total' => $entries + $exits
+            ]
+        ]);
+    }
+
+    /**
      * Recibe un lote (array) de asistencias escaneadas offline y las guarda de golpe.
      */
     public function pushData(Request $request)
@@ -24,8 +52,11 @@ class AttendanceSyncController extends Controller
             // device_id y authorized_person_id son opcionales
         ]);
 
-        // 2. Obtenemos el ID de la escuela desde el token del monitor
-        $schoolId = $request->user()->school_id;
+        // 2. Obtenemos el ID de la escuela y del kiosco desde el token
+        $user = $request->user();
+        $schoolId = $user->school_id;
+        $kioskId = ($user instanceof \App\Models\Kiosk) ? $user->id : null;
+
         $logs = $request->input('logs');
 
         $recordsToInsert = [];
@@ -33,12 +64,16 @@ class AttendanceSyncController extends Controller
 
         // 3. Preparamos los datos
         foreach ($logs as $log) {
+            // Convertimos la fecha ISO (JS) a formato MySQL
+            $scannedAt = \Illuminate\Support\Carbon::parse($log['scanned_at'])->toDateTimeString();
+
             $recordsToInsert[] = [
                 'school_id' => $schoolId,
                 'student_id' => $log['student_id'],
-                'scanned_at' => $log['scanned_at'], // La hora real en que se escaneó offline
+                'scanned_at' => $scannedAt,
                 'type' => $log['type'],
-                'kiosk_id' => $log['kiosk_id'] ?? null,
+                'kiosk_id' => $log['kiosk_id'] ?? $kioskId,
+                'recorded_by_user_id' => ($user instanceof \App\Models\User) ? $user->id : null,
                 'authorized_person_id' => $log['authorized_person_id'] ?? null,
                 'sync_status' => 'synced',
                 'created_at' => $now

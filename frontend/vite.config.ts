@@ -19,8 +19,8 @@ export default defineConfig({
         cleanupOutdatedCaches: true
       },
       manifest: {
-        name: 'EduControl PWA',
-        short_name: 'EduControl',
+        name: 'miEscuelaApp',
+        short_name: 'miEscuela',
         description: 'Sistema de control y acceso escolar offline-first',
         theme_color: '#ffffff',
         background_color: '#ffffff',

@@ -54,23 +54,26 @@
             </p>
           </div>
 
-          <!-- Google Login Button -->
-          <button 
-            class="w-full flex items-center justify-center gap-3 bg-white border border-gray-200 text-gray-700 font-semibold py-3.5 px-4 rounded-xl shadow-sm hover:bg-gray-50 hover:shadow transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue focus:border-transparent active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-            @click="loginWithGoogle"
-            :disabled="isLoading"
-          >
-            <!-- Google Icon SVG (Brand color) -->
-            <svg class="w-5 h-5" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-              <path fill="none" d="M1 1h22v22H1z"/>
-            </svg>
-            <span class="text-sm" v-if="!isLoading">Iniciar sesión con Google</span>
-            <span class="text-sm" v-else>Verificando...</span>
-          </button>
+          <!-- Google Login Button (functional approach) -->
+          <div class="flex justify-center flex-col items-center">
+            <button 
+              @click="handleGoogleLogin" 
+              :disabled="isLoading"
+              class="flex items-center justify-center gap-3 w-full max-w-sm px-6 py-3.5 bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md hover:bg-gray-50 transition-all duration-200 group active:scale-[0.98]"
+            >
+              <svg class="w-5 h-5" viewBox="0 0 24 24">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 12-4.53z" fill="#EA4335"/>
+              </svg>
+              <span class="text-gray-700 font-bold text-sm">Continuar con Google</span>
+            </button>
+            <div v-if="isLoading" class="mt-4 flex items-center gap-2 text-brand-blue animate-pulse">
+              <div class="w-1.5 h-1.5 bg-current rounded-full"></div>
+              <span class="text-[11px] font-bold uppercase tracking-widest">Iniciando sesión...</span>
+            </div>
+          </div>
 
           <!-- Divider -->
           <div class="mt-8 mb-8 flex items-center justify-center">
@@ -119,52 +122,65 @@ import { storage } from '@/services/storage';
 const router = useRouter();
 const isLoading = ref(false);
 
-const loginWithGoogle = async () => {
+const handleGoogleLogin = () => {
+  isLoading.value = true;
+  googleTokenLogin().then((response) => {
+    console.log('DEBUG GOOGLE RESPONSE:', JSON.stringify(response, null, 2));
+    onGoogleCallback(response);
+  }).catch(error => {
+    console.error('DEBUG GOOGLE ERROR:', error);
+    isLoading.value = false;
+    alert('Error al abrir la ventana de Google. Verifica los bloqueadores de popups.');
+  });
+};
+
+const onGoogleCallback = async (response: any) => {
   try {
     isLoading.value = true;
     
-    // 1. Invocar el pop-up de Google
-    const { access_token } = await googleTokenLogin();
-    
+    // Access token should be here
+    const access_token = response.access_token;
+
     if (!access_token) {
-      throw new Error('No se recibió token de Google');
+      console.warn('Alerta: No se recibió access_token. Respuesta completa:', response);
+      if (response.error) {
+         throw new Error(`Google Error: ${response.error} - ${response.error_description || ''}`);
+      }
+      throw new Error('La respuesta de Google no contiene un token de acceso.');
     }
 
-    // 2. Enviar el token de terceros al backend de Laravel
-    const response = await api.post('/auth/parent/google', { token: access_token });
+    // Enviar el token al backend de Laravel
+    const apiResponse = await api.post('/auth/parent/google', { token: access_token });
     
-    // 3. Evaluar la respuesta (asumiendo que Laravel responde con su propio JSON Web Token/Sanctum)
-    if (response.data.success && response.data.token) {
-      // Guardarlo persistente en LocalForage / Ionic Storage para axios en peticiones futuras
-      await storage.set('auth_token', response.data.token);
-      await storage.set('auth_user', response.data.user);
+    if (apiResponse.data.success && apiResponse.data.token) {
+      await storage.set('auth_token', apiResponse.data.token);
+      await storage.set('auth_user', apiResponse.data.user);
       
-      // Mostrar toast de éxito
       const toast = await toastController.create({
-        message: 'Bienvenido de nuevo, ' + response.data.user.name,
+        message: 'Bienvenido de nuevo, ' + apiResponse.data.user.name,
         duration: 3000,
         color: 'success',
         position: 'top'
       });
       await toast.present();
       
-      // 4. Redirigir según el rol del usuario (Súper Admin/Admin o Papá)
-      if (response.data.user.role === 'super_admin' || response.data.user.role === 'director' || response.data.user.role === 'teacher') {
+      if (apiResponse.data.user.role === 'super_admin' || apiResponse.data.user.role === 'director' || apiResponse.data.user.role === 'teacher') {
          router.push('/admin/dashboard'); 
       } else {
-         router.push('/monitor'); // Sustituir por la vista real de padres después
+         router.push('/monitor');
       }
     }
     
   } catch (error: any) {
     console.error('Error durante el login con Google:', error);
     
-    // Extraer mensaje del error controlado en la API o mostrar uno genérico
-    const msg = error.response?.data?.message || 'Error de conexión con el proveedor o el servidor.';
+    let msg = 'Error de conexión con el proveedor o el servidor.';
+    if (error.message) msg = error.message;
+    if (error.response?.data?.message) msg = error.response.data.message;
     
     const toast = await toastController.create({
         message: msg,
-        duration: 5000,
+        duration: 8000,
         color: 'danger',
         position: 'top'
     });

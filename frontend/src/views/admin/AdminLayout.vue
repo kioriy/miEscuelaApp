@@ -8,7 +8,7 @@
            <div class="w-8 h-8 bg-brand-blue rounded-lg flex items-center justify-center text-white shadow-md shadow-blue-500/20">
               <ion-icon :icon="school" class="text-sm"></ion-icon>
            </div>
-           <h2 class="text-lg font-black text-gray-900 tracking-tight leading-none">SchoolTrack</h2>
+            <h2 class="text-lg font-black text-gray-900 tracking-tight leading-none italic uppercase">miEscuelaApp</h2>
         </div>
         <button @click="toggleMobileMenu" class="p-2 -mr-2 text-gray-600 hover:text-brand-blue transition-colors focus:outline-none">
           <ion-icon :icon="menuOutline" class="text-3xl"></ion-icon>
@@ -37,8 +37,8 @@
                 <ion-icon :icon="school" class="text-xl"></ion-icon>
               </div>
               <div>
-                <h2 class="text-xl font-black text-gray-900 tracking-tight leading-none">SchoolTrack</h2>
-                <span class="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Consola de Admin</span>
+                <h2 class="text-xl font-black text-gray-900 tracking-tight leading-none italic uppercase">miEscuelaApp</h2>
+                <span class="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Sistema Escolar</span>
               </div>
             </div>
             <!-- Close button only on Mobile inside Sidebar -->
@@ -54,14 +54,19 @@
               Panel Principal
             </router-link>
             
-            <router-link to="/admin/schools" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/schools') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
+            <router-link v-if="isAdmin" to="/admin/schools" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/schools') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
               <ion-icon :icon="business" class="text-xl"></ion-icon>
               Escuelas
             </router-link>
 
             <router-link to="/admin/users" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/users') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
               <ion-icon :icon="people" class="text-xl"></ion-icon>
-              Usuarios
+              {{ isAdmin ? 'Usuarios' : 'Profesores' }}
+            </router-link>
+
+            <router-link v-if="!isAdmin" to="#" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold text-gray-500 hover:bg-gray-50 hover:text-gray-900">
+              <ion-icon :icon="school" class="text-xl"></ion-icon>
+              Estudiantes
             </router-link>
 
             <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold text-gray-500 hover:bg-gray-50 hover:text-gray-900">
@@ -69,22 +74,41 @@
               Reportes
             </a>
 
-            <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold text-gray-500 hover:bg-gray-50 hover:text-gray-900 mt-4">
+            <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold text-gray-500 hover:bg-gray-50 hover:text-gray-900">
               <ion-icon :icon="settings" class="text-xl"></ion-icon>
               Configuración
+            </a>
+
+            <!-- Accesos Rápidos Section -->
+            <div class="pt-8 pb-2 px-4">
+              <span class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Accesos Rápidos</span>
+            </div>
+
+            <a href="#" class="flex items-center justify-between px-4 py-3 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all group">
+              <div class="flex items-center gap-3 font-semibold text-sm">
+                <ion-icon :icon="notifications" class="text-xl text-gray-400 group-hover:text-amber-500"></ion-icon>
+                Alertas
+              </div>
+              <span class="bg-red-50 text-red-600 text-[10px] font-black px-1.5 py-0.5 rounded-md">3</span>
+            </a>
+
+            <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all group">
+              <ion-icon :icon="calendar" class="text-xl text-gray-400 group-hover:text-brand-blue"></ion-icon>
+              <span class="font-semibold text-sm">Calendario</span>
             </a>
           </nav>
 
           <!-- User Profile & Logout -->
           <div class="px-4 py-6 border-t border-gray-100 mt-auto bg-white">
             <div class="flex items-center gap-3 px-2 mb-6">
-              <div class="w-10 h-10 rounded-full bg-orange-100 overflow-hidden shrink-0 border border-gray-200 shadow-sm">
-                <!-- Fallback to illustration if real URL not provided -->
-                <img src="https://i.pravatar.cc/150?img=11" alt="Tom Cook" class="w-full h-full object-cover">
+              <div class="w-10 h-10 rounded-full bg-orange-100 overflow-hidden shrink-0 border border-gray-200 shadow-sm flex items-center justify-center">
+                <img v-if="userProfile.photo" :src="userProfile.photo" :alt="userProfile.name" class="w-full h-full object-cover">
+                <ion-icon v-else :icon="personOutline" class="text-xl text-gray-500"></ion-icon>
               </div>
-              <div>
-                <p class="text-sm font-bold text-gray-900">Tom Cook</p>
-                <p class="text-[11px] text-gray-400 font-medium">Súper Admin</p>
+              <div class="overflow-hidden">
+                <p class="text-[13px] font-bold text-gray-900 truncate tracking-tight">{{ userProfile.name }}</p>
+                <p class="text-[10px] text-brand-blue font-black uppercase tracking-tighter">{{ userRoleLabel }}</p>
+                <p class="text-[10px] text-gray-400 font-medium truncate mt-0.5">{{ userProfile.email }}</p>
               </div>
             </div>
             <button @click="logout" class="w-full flex items-center justify-center gap-2 bg-red-50/50 border border-red-100 text-red-600 hover:bg-red-50 hover:border-red-200 transition-all py-3 rounded-xl font-bold text-sm shadow-sm">
@@ -105,12 +129,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { IonPage, IonIcon, IonRouterOutlet } from '@ionic/vue';
 import { 
-  school, grid, business, people, barChart, settings, logOutOutline, menuOutline, closeOutline
+  school, grid, business, people, barChart, settings, logOutOutline, menuOutline, closeOutline, personOutline, notifications, calendar
 } from 'ionicons/icons';
 import { useRouter } from 'vue-router';
+import { storage } from '@/services/storage';
 
 const router = useRouter();
 
@@ -124,9 +149,47 @@ const closeMobileMenu = () => {
   isMobileMenuOpen.value = false;
 };
 
-const logout = () => {
+const userProfile = ref({
+  name: 'Cargando...',
+  role: 'user',
+  email: '',
+  photo: ''
+});
+
+onMounted(async () => {
+  const user = await storage.get('auth_user');
+  if (user) {
+    userProfile.value.name = user.name || 'Usuario';
+    userProfile.value.role = user.role || 'user';
+    userProfile.value.email = user.email || '';
+    
+    // Prioridad: 1. Google Avatar (avatar_url), 2. Local Photo (profile_photo_path)
+    if (user.avatar_url) {
+      userProfile.value.photo = user.avatar_url;
+    } else if (user.profile_photo_path) {
+      userProfile.value.photo = user.profile_photo_path.startsWith('http') 
+        ? user.profile_photo_path 
+        : `http://localhost:8000/storage/${user.profile_photo_path}`;
+    }
+  }
+});
+
+const isAdmin = computed(() => userProfile.value.role === 'super_admin');
+
+const userRoleLabel = computed(() => {
+  switch(userProfile.value.role) {
+    case 'super_admin': return 'Súper Admin / Sistemas';
+    case 'director': return 'Director General';
+    case 'teacher': return 'Profesor(a)';
+    case 'parent': return 'Padre / Tutor';
+    default: return 'Usuario Registrado';
+  }
+});
+
+const logout = async () => {
   closeMobileMenu();
-  // Mock logout, return to root
+  await storage.remove('auth_token');
+  await storage.remove('auth_user');
   router.push('/login');
 };
 </script>

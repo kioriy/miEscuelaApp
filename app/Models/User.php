@@ -23,7 +23,10 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
-        'google_id'
+        'google_id',
+        'school_id',
+        'profile_photo_path',
+        'avatar_url'
     ];
 
     /**
@@ -47,5 +50,10 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function school(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(School::class);
     }
 }

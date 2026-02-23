@@ -25,50 +25,54 @@ class ParentAuthController extends Controller
             $googleUser = Socialite::driver('google')->stateless()->userFromToken($request->token);
             $email = $googleUser->getEmail();
 
+            // 1. Buscar usuario existente
             $user = User::where('email', $email)->first();
 
             if (!$user) {
-                $studentExists = Student::where('tutor_email', $email)
+                // 2. Si no existe, verificar si es un tutor de un alumno para auto-registro
+                $student = Student::where('tutor_email', $email)
                     ->orWhere('secondary_tutor_email', $email)
-                    ->exists();
+                    ->first();
 
-                if (!$studentExists) {
+                if ($student) {
+                    // Crear usuario con rol 'parent' vinculado a la escuela del alumno
+                    $user = User::create([
+                        'name' => $googleUser->getName(),
+                        'email' => $email,
+                        'password' => Hash::make(Str::random(24)),
+                        'role' => 'parent',
+                        'google_id' => $googleUser->getId(),
+                        'avatar_url' => $googleUser->getAvatar(),
+                        'school_id' => $student->school_id,
+                    ]);
+                } else {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Correo no autorizado. Por favor, acude a la dirección de tu instituto para registrar tu correo: ' . $email
+                        'message' => 'Esta cuenta de Google no está asociada a ningún usuario o tutor registrado en el sistema.'
                     ], 403);
                 }
-
-                $user = User::create([
-                    'name' => $googleUser->getName(),
-                    'email' => $email,
-                    'google_id' => $googleUser->getId(),
-                    'role' => 'parent',
-                    'password' => Hash::make(Str::random(24))
-                ]);
             } else {
-                $user->update(['google_id' => $googleUser->getId()]);
+                // Actualizar información de Google en el usuario existente
+                $user->update([
+                    'google_id' => $googleUser->getId(),
+                    'avatar_url' => $googleUser->getAvatar(),
+                ]);
             }
 
-            $apiToken = $user->createToken('parent_mobile_app')->plainTextToken;
+            // Generar token de acceso (Sanctum)
+            $token = $user->createToken('auth_token')->plainTextToken;
 
             return response()->json([
                 'success' => true,
-                'message' => 'Login exitoso',
-                'token' => $apiToken,
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'role' => $user->role
-                ]
-            ], 200);
+                'token' => $token,
+                'user' => $user,
+                'message' => 'Login exitoso'
+            ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error al verificar la cuenta de Google.',
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'error' => $e->getMessage()
             ], 401);
         }
     }

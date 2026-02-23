@@ -60,4 +60,25 @@ class MonitorSyncController extends Controller
             ]
         ], 200);
     }
+    public function getSchoolInfo(Request $request)
+    {
+        $user = $request->user();
+        $school = \App\Models\School::find($user->school_id);
+
+        if (!$school) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Escuela no encontrada.'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'name' => $school->name,
+                'logo_url' => $school->logo_path ? asset('storage/' . $school->logo_path) : null,
+                'kiosk_name' => ($user instanceof \App\Models\Kiosk) ? $user->name : 'Monitor Principal'
+            ]
+        ]);
+    }
 }

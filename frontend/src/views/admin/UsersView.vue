@@ -27,42 +27,63 @@
     </div>
 
     <!-- Stats -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-      <!-- Stat 1 -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
+      <!-- Usuarios Totales -->
       <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-start justify-between transition-transform hover:-translate-y-1">
         <div>
           <h3 class="text-[13px] font-bold text-gray-500 mb-2">Usuarios Totales</h3>
           <div class="flex items-baseline gap-3">
             <span class="text-[40px] font-black text-gray-900 leading-none tracking-tight">
-              <span v-if="loadingStats">...</span>
-              <span v-else>{{ stats.users }}</span>
+              <span v-if="loadingUsers">...</span>
+              <span v-else>{{ users.length }}</span>
             </span>
             <span class="text-[11px] font-bold text-green-700 bg-green-100/50 border border-green-200 px-2 py-0.5 rounded-full flex items-center gap-1">
-               Totales en DB
+               Registrados
             </span>
           </div>
         </div>
       </div>
-      <!-- Stat 2 -->
-      <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-start justify-between transition-transform hover:-translate-y-1">
-        <div class="w-full">
-          <h3 class="text-[13px] font-bold text-gray-500 mb-2">Directores Activos</h3>
-          <div class="flex items-baseline gap-3 w-full">
-            <span class="text-[40px] font-black text-gray-900 leading-none tracking-tight">42</span>
-            <span class="text-[11px] font-bold text-gray-500 flex items-center gap-1 mt-auto">
-               Uno por escuela
-            </span>
-          </div>
-        </div>
-      </div>
-      <!-- Stat 3 -->
+      <!-- Directores -->
       <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-start justify-between transition-transform hover:-translate-y-1">
         <div>
-          <h3 class="text-[13px] font-bold text-gray-500 mb-2">Invitaciones Pendientes</h3>
+          <h3 class="text-[13px] font-bold text-gray-500 mb-2">Directores</h3>
           <div class="flex items-baseline gap-3">
-            <span class="text-[40px] font-black text-gray-900 leading-none tracking-tight">8</span>
-            <span class="text-[11px] font-bold text-amber-700 bg-amber-100/50 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1">
-               Requieren seguimiento
+            <span class="text-[40px] font-black text-indigo-600 leading-none tracking-tight">
+              <span v-if="loadingUsers">...</span>
+              <span v-else>{{ directorsCount }}</span>
+            </span>
+            <span class="text-[11px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+               Activos
+            </span>
+          </div>
+        </div>
+      </div>
+      <!-- Maestros -->
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-start justify-between transition-transform hover:-translate-y-1">
+        <div>
+          <h3 class="text-[13px] font-bold text-gray-500 mb-2">Maestros</h3>
+          <div class="flex items-baseline gap-3">
+            <span class="text-[40px] font-black text-brand-blue leading-none tracking-tight">
+              <span v-if="loadingUsers">...</span>
+              <span v-else>{{ teachersCount }}</span>
+            </span>
+            <span class="text-[11px] font-bold text-brand-blue bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+               Activos
+            </span>
+          </div>
+        </div>
+      </div>
+      <!-- Padres / Tutores -->
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-start justify-between transition-transform hover:-translate-y-1">
+        <div>
+          <h3 class="text-[13px] font-bold text-gray-500 mb-2">Padres / Tutores</h3>
+          <div class="flex items-baseline gap-3">
+            <span class="text-[40px] font-black text-emerald-600 leading-none tracking-tight">
+              <span v-if="loadingUsers">...</span>
+              <span v-else>{{ parentsCount }}</span>
+            </span>
+            <span class="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+               Registrados
             </span>
           </div>
         </div>
@@ -123,10 +144,13 @@
             <tr v-else v-for="user in users" :key="user.id" class="border-b border-gray-50 hover:bg-gray-50/80 transition-colors">
               <td class="p-4 pl-6">
                 <div class="flex items-center gap-3">
-                  <div class="w-8 h-8 rounded-full bg-blue-100 text-brand-blue text-[11px] font-black flex items-center justify-center shrink-0">
-                    {{ user.name ? user.name.substring(0, 2).toUpperCase() : 'US' }}
+                  <div class="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center text-brand-blue font-black border border-orange-200 shadow-sm overflow-hidden shrink-0">
+                    <img v-if="getUserPhoto(user)" :src="getUserPhoto(user)" class="w-full h-full object-cover" />
+                    <ion-icon v-else :icon="personOutline" class="text-xl text-gray-400"></ion-icon>
                   </div>
-                  <p class="font-bold text-gray-900 leading-tight">{{ user.name }}</p>
+                  <div>
+                    <p class="font-bold text-gray-900 leading-tight">{{ user.name }}</p>
+                  </div>
                 </div>
               </td>
               <td class="p-4 text-brand-blue font-medium text-[13px]">
@@ -144,9 +168,19 @@
                 <span class="bg-green-100/50 border border-green-200 text-green-700 text-[11px] px-2.5 py-1 rounded-full font-bold">Activo</span>
               </td>
               <td class="p-4 pr-6">
-                <div class="flex items-center justify-end gap-3 text-gray-400">
-                  <button @click="$router.push(`/admin/users/${user.id}/edit`)" class="hover:text-gray-900 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"><ion-icon :icon="createOutline"></ion-icon></button>
-                  <button class="hover:text-red-500 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors"><ion-icon :icon="trashOutline"></ion-icon></button>
+                <div class="flex items-center justify-end gap-2 text-gray-400">
+                  <button @click="$router.push(`/admin/users/${user.id}`)" class="hover:text-brand-blue flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-blue-50 transition-colors text-[12px] font-semibold">
+                    <ion-icon :icon="eyeOutline" class="text-sm"></ion-icon>
+                    <span>Ver</span>
+                  </button>
+                  <button @click="$router.push(`/admin/users/${user.id}/edit`)" class="hover:text-gray-900 flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors text-[12px] font-semibold">
+                    <ion-icon :icon="createOutline" class="text-sm"></ion-icon>
+                    <span>Editar</span>
+                  </button>
+                  <button class="hover:text-red-500 flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-red-50 transition-colors text-[12px] font-semibold">
+                    <ion-icon :icon="trashOutline" class="text-sm"></ion-icon>
+                    <span>Eliminar</span>
+                  </button>
                 </div>
               </td>
             </tr>
@@ -201,11 +235,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { IonPage, IonContent, IonIcon, IonRefresher, IonRefresherContent } from '@ionic/vue';
 import { 
   downloadOutline, personAddOutline, searchOutline, chevronDown, filter,
-  createOutline, trashOutline, push, documentText, grid, refreshOutline
+  createOutline, trashOutline, eyeOutline, push, documentText, grid, refreshOutline, personOutline
 } from 'ionicons/icons';
 import api from '@/services/api';
 
@@ -221,6 +255,21 @@ const stats = ref({
 });
 
 const users = ref<any[]>([]);
+
+// Computed: conteos por rol
+const directorsCount = computed(() => users.value.filter(u => u.role === 'director').length);
+const teachersCount = computed(() => users.value.filter(u => u.role === 'teacher').length);
+const parentsCount = computed(() => users.value.filter(u => u.role === 'parent').length);
+
+const getUserPhoto = (user: any) => {
+  if (user.avatar_url) return user.avatar_url;
+  if (user.profile_photo_path) {
+    return user.profile_photo_path.startsWith('http') 
+      ? user.profile_photo_path 
+      : `http://localhost:8000/storage/${user.profile_photo_path}`;
+  }
+  return null;
+};
 
 const fetchDashboardStats = async () => {
   try {

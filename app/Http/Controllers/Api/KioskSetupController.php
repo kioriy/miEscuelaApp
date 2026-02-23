@@ -12,6 +12,37 @@ class KioskSetupController extends Controller
     /**
      * Valida el PIN de activación en la tablet y vincula el dispositivo a la escuela.
      */
+    public function getStatus(Request $request)
+    {
+        $user = $request->user();
+        $schoolId = $user ? $user->school_id : $request->query('school_id');
+
+        if (!$schoolId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se pudo determinar la escuela.'
+            ], 400);
+        }
+
+        $school = School::find($schoolId);
+        if (!$school) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Escuela no encontrada.'
+            ], 404);
+        }
+
+        $activeKiosksCount = $school->kiosks()->where('is_active', true)->count();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'active_count' => $activeKiosksCount,
+                'total_allowed' => $school->allowed_kiosks,
+            ]
+        ]);
+    }
+
     public function activate(Request $request)
     {
         $request->validate([
@@ -71,7 +102,8 @@ class KioskSetupController extends Controller
                 'id' => $kiosk->id,
                 'name' => $kiosk->name,
                 'school_id' => $school->id,
-                'school_name' => $school->name
+                'school_name' => $school->name,
+                'school_logo_url' => $school->logo_path ? asset('storage/' . $school->logo_path) : null
             ]
         ], 200);
     }

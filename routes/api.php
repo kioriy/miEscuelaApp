@@ -14,25 +14,39 @@ Route::post('/auth/parent/google', [ParentAuthController::class, 'loginWithGoogl
 Route::post('/setup/kiosk/activate', [KioskSetupController::class, 'activate']);
 
 Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/setup/kiosk/status', [KioskSetupController::class, 'getStatus']);
     Route::get('/parent/students', function (Request $request) {
         return response()->json(['message' => 'Pronto listaremos los hijos del usuario: ' . $request->user()->name]);
     });
 
     // Rutas para el Kiosco / Monitor
+    Route::get('/sync/monitor/school', [MonitorSyncController::class, 'getSchoolInfo']);
     Route::get('/sync/monitor/pull', [MonitorSyncController::class, 'pullData']);
     Route::post('/sync/monitor/push', [AttendanceSyncController::class, 'pushData']);
+    Route::get('/sync/monitor/stats', [AttendanceSyncController::class, 'getKioskStats']);
 
     // Rutas para el Panel de Administración (Vue Frontend)
     Route::prefix('admin')->group(function () {
         Route::get('/stats', [AdminController::class, 'dashboardStats']);
+        // Schools Management
         Route::get('/schools', [AdminController::class, 'getSchools']);
-        Route::get('/schools/{id}', [AdminController::class, 'showSchool']);
         Route::post('/schools', [AdminController::class, 'storeSchool']);
+        Route::get('/schools/{id}', [AdminController::class, 'showSchool']);
         Route::put('/schools/{id}', [AdminController::class, 'updateSchool']);
+        Route::post('/schools/{id}/students/import', [AdminController::class, 'importStudents']);
 
         Route::get('/users', [AdminController::class, 'getUsers']);
         Route::get('/users/{id}', [AdminController::class, 'showUser']);
         Route::post('/users', [AdminController::class, 'storeUser']);
         Route::put('/users/{id}', [AdminController::class, 'updateUser']);
+        Route::delete('/users/{id}', [AdminController::class, 'destroyUser']);
+        Route::post('/users/{id}/resend-welcome', [AdminController::class, 'resendWelcomeEmail']);
+
+        // Students Management
+        Route::get('/schools/{id}/students', [AdminController::class, 'getStudents']);
+        Route::get('/students/{id}', [AdminController::class, 'showStudent']);
+        Route::get('/schools/{id}/leaderboard', [AdminController::class, 'getLeaderboard']);
+        Route::get('/reports/unclosed', [AdminController::class, 'getUnclosedAttendance']);
+        Route::get('/director/stats', [AdminController::class, 'directorDashboardStats']);
     });
 });

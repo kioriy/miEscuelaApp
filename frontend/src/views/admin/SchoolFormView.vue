@@ -362,10 +362,10 @@ onMounted(async () => {
         if (data.logo_path) {
           logoPreview.value = data.logo_path.startsWith('http') ? data.logo_path : 'http://localhost:8000/storage/' + data.logo_path;
         }
-        
         if (data.kiosks && data.kiosks.length > 0) {
-            dummyKiosks.value = data.kiosks.map((k: any) => k.device_identifier);
+            dummyKiosks.value = data.kiosks.map((k: any) => k.activation_code);
         }
+
       }
     } catch (error) {
       console.error('Error cargando los datos de la escuela', error);

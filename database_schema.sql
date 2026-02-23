@@ -32,14 +32,7 @@ CREATE TABLE `kiosks` (
 ) ENGINE=InnoDB;
 
 -- 3. TABLA: users (Administrativos, Directores, Maestros y Papás)
-CREATE TABLE `users` (
-    `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    `school_id` BIGINT UNSIGNED NULL, -- NULL solo para el Super Admin de la Agencia
-    `name` VARCHAR(100) NOT NULL,
-    `email` VARCHAR(150) NOT NULL,
-    `password` VARCHAR(255) NULL, -- Nullable porque los papás entran con Google
-    `google_id` VARCHAR(255) NULL, 
-    `role` ENUM('super_admin', 'director', 'teacher', 'parent') NOT NULL,
+
     `remember_token` VARCHAR(100) NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

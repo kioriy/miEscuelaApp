@@ -2,11 +2,14 @@ import { createRouter, createWebHistory } from '@ionic/vue-router';
 import { RouteRecordRaw } from 'vue-router';
 import LoginView from '../views/LoginView.vue';
 import MonitorView from '../views/MonitorView.vue';
+import MonitorActivateView from '../views/MonitorActivateView.vue';
 import AdminLayout from '../views/admin/AdminLayout.vue';
 import DashboardView from '../views/admin/DashboardView.vue';
 import SchoolsView from '../views/admin/SchoolsView.vue';
+import SchoolDetailView from '../views/admin/SchoolDetailView.vue';
 import SchoolFormView from '../views/admin/SchoolFormView.vue';
 import UsersView from '../views/admin/UsersView.vue';
+import UserDetailView from '../views/admin/UserDetailView.vue';
 import UserFormView from '../views/admin/UserFormView.vue';
 
 const routes: Array<RouteRecordRaw> = [
@@ -23,6 +26,11 @@ const routes: Array<RouteRecordRaw> = [
     path: '/monitor',
     name: 'Monitor',
     component: MonitorView
+  },
+  {
+    path: '/monitor/activate',
+    name: 'MonitorActivate',
+    component: MonitorActivateView
   },
   {
     path: '/admin',
@@ -49,6 +57,11 @@ const routes: Array<RouteRecordRaw> = [
         component: SchoolFormView
       },
       {
+        path: 'schools/:id',
+        name: 'SchoolDetail',
+        component: SchoolDetailView
+      },
+      {
         path: 'schools/:id/edit',
         name: 'SchoolEdit',
         component: SchoolFormView
@@ -62,6 +75,11 @@ const routes: Array<RouteRecordRaw> = [
         path: 'users/create',
         name: 'UserForm',
         component: UserFormView
+      },
+      {
+        path: 'users/:id',
+        name: 'UserDetail',
+        component: UserDetailView
       },
       {
         path: 'users/:id/edit',

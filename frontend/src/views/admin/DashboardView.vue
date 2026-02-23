@@ -1,130 +1,369 @@
 <template>
   <ion-page>
-    <ion-content class="ion-padding-bottom">
+    <ion-content :fullscreen="true">
       <ion-refresher slot="fixed" @ionRefresh="handleRefresh($event)">
         <ion-refresher-content></ion-refresher-content>
       </ion-refresher>
-      <div class="p-8 lg:p-12 w-full max-w-[1400px] mx-auto min-h-full flex flex-col bg-gray-50">
-        <!-- Header -->
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-          <div>
-            <h1 class="text-[32px] font-black text-gray-900 tracking-tight leading-none mb-2">Panel de Súper Administrador</h1>
-            <p class="text-gray-500 font-medium">Supervisión global y acceso rápido a la gestión masiva de datos.</p>
-          </div>
-          <div class="flex items-center gap-3 shrink-0">
-            <button @click="fetchDashboardStats" class="bg-white border border-gray-200 text-gray-700 font-bold w-10 h-10 rounded-xl text-sm shadow-sm hover:bg-gray-50 flex items-center justify-center transition-all">
-              <ion-icon :icon="refreshOutline" class="text-lg"></ion-icon>
-            </button>
-            <button class="bg-white border border-gray-200 text-gray-700 font-bold py-2.5 px-5 rounded-xl text-sm shadow-sm hover:bg-gray-50 flex items-center gap-2 transition-all">
-              <ion-icon :icon="downloadOutline" class="text-lg"></ion-icon>
-              Exportar Reporte
-            </button>
-            <button class="bg-brand-blue text-white font-bold py-2.5 px-5 rounded-xl text-sm shadow-md shadow-blue-500/20 hover:bg-blue-600 flex items-center gap-2 transition-all">
-              <ion-icon :icon="addOutline" class="text-lg"></ion-icon>
-              Agregar Nueva Escuela
-            </button>
-          </div>
-        </div>
 
-        <!-- Stats -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-          <!-- Stat 1 -->
-          <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between transition-transform hover:-translate-y-1">
-            <div>
-              <h3 class="text-[13px] font-bold text-gray-500 mb-2">Escuelas Registradas</h3>
-              <div class="flex items-baseline gap-3">
-                <span class="text-[40px] font-black text-gray-900 leading-none tracking-tight">
-                  <span v-if="loading">...</span>
-                  <span v-else>{{ stats.schools }}</span>
-                </span>
-                <span class="text-[11px] font-bold text-green-700 bg-green-100/50 border border-green-200 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <ion-icon :icon="trendingUpOutline"></ion-icon> Total activo
-                </span>
-              </div>
-            </div>
-            <div class="text-blue-50">
-              <ion-icon :icon="business" class="text-[64px]"></ion-icon>
-            </div>
-          </div>
-          <!-- Stat 2 -->
-          <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between transition-transform hover:-translate-y-1">
-            <div>
-              <h3 class="text-[13px] font-bold text-gray-500 mb-2">Estudiantes/Usuarios (Total DB)</h3>
-              <div class="flex items-baseline gap-3">
-                <span class="text-[40px] font-black text-gray-900 leading-none tracking-tight">
-                  <span v-if="loading">...</span>
-                  <span v-else>{{ stats.students + stats.users }}</span>
-                </span>
-                <span class="text-[11px] font-bold text-green-700 bg-green-100/50 border border-green-200 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <ion-icon :icon="trendingUpOutline"></ion-icon> Activos
-                </span>
-              </div>
-            </div>
-            <div class="text-blue-50">
-              <!-- SVG Cap -->
-              <svg class="w-16 h-16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2.08-1.13L23 9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72l5 2.73 5-2.73v3.72z"/></svg>
-            </div>
-          </div>
-          <!-- Stat 3 -->
-          <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between transition-transform hover:-translate-y-1">
-            <div>
-              <h3 class="text-[13px] font-bold text-gray-500 mb-2">Salud del Sistema (Kioscos)</h3>
-              <div class="flex items-baseline gap-3">
-                <span class="text-[40px] font-black text-gray-900 leading-none tracking-tight">
-                  <span v-if="loading">...</span>
-                  <span v-else>{{ stats.systemHealth }}%</span>
-                </span>
-                <span class="text-[11px] font-bold text-green-700 flex items-center gap-1.5">
-                  <div class="w-2 h-2 rounded-full bg-green-500 ring-2 ring-green-100"></div> {{ stats.kiosks }} Operativos
-                </span>
-              </div>
-            </div>
-            <div class="text-blue-50 flex flex-col gap-1">
-              <div class="w-10 h-5 bg-current rounded pl-1 pt-1"><div class="w-1.5 h-1.5 bg-white rounded-full"></div></div>
-              <div class="w-10 h-5 bg-current rounded pl-1 pt-1"><div class="w-1.5 h-1.5 bg-white rounded-full"></div></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Carga Masiva (Reusable block shape) -->
-        <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 mb-8 mt-auto flex-grow h-full flex flex-col">
-          <div class="flex items-center gap-4 mb-8">
-            <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-brand-blue shrink-0">
-              <ion-icon :icon="push" class="text-2xl"></ion-icon>
-            </div>
-            <div>
-              <h3 class="text-xl font-bold text-gray-900 tracking-tight">Carga Masiva de Alumnos</h3>
-              <p class="text-gray-500 text-sm font-medium">Importar datos desde archivo (CSV, XLSX, JSON)</p>
-            </div>
-          </div>
-
-          <div class="flex-grow border-2 border-dashed border-gray-200 rounded-2xl p-10 flex flex-col items-center justify-center text-center hover:border-brand-blue hover:bg-blue-50/10 transition-colors cursor-pointer group">
-            <div class="flex gap-10 mb-8 text-gray-400 group-hover:text-brand-blue transition-colors">
-              <div class="flex flex-col items-center gap-3">
-                  <ion-icon :icon="documentText" class="text-[40px]"></ion-icon>
-                  <span class="text-[11px] font-bold uppercase tracking-widest text-gray-500">CSV</span>
-              </div>
-              <div class="flex flex-col items-center gap-3">
-                  <ion-icon :icon="grid" class="text-[40px]"></ion-icon>
-                  <span class="text-[11px] font-bold uppercase tracking-widest text-gray-500">XLSX</span>
-              </div>
-              <div class="flex flex-col items-center gap-3">
-                  <!-- brackets icon custom -->
-                  <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M14.6 16.6l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4m-5.2 0L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4z"/></svg>
-                  <span class="text-[11px] font-bold uppercase tracking-widest text-gray-500">JSON</span>
-              </div>
-            </div>
-            <h4 class="text-base font-bold text-gray-900 mb-2">Arrastra tus archivos aquí o haz clic para subir</h4>
-            <p class="text-[13px] text-gray-400 font-medium mb-8">Tamaño máximo de archivo: 10MB</p>
-            <button class="bg-white border border-gray-200 px-6 py-2.5 rounded-xl text-[13px] font-bold shadow-sm text-gray-700 hover:bg-gray-50 transition-colors">
-              Seleccionar Archivo
-            </button>
-          </div>
-        </div>
+      <div class="p-6 lg:p-10 w-full max-w-[1600px] mx-auto min-h-full flex flex-col bg-gray-50 font-sans">
         
+        <!-- Super Admin View (Existing) -->
+        <div v-if="isAdmin">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+            <div>
+              <h1 class="text-[32px] font-black text-gray-900 tracking-tight leading-none mb-2">Panel Administrativo</h1>
+              <p class="text-gray-500 font-medium tracking-wide">Gestión global del sistema miEscuelaApp</p>
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+              <div>
+                <p class="text-[12px] font-black text-gray-400 uppercase tracking-widest mb-1">Escuelas</p>
+                <h3 class="text-3xl font-black text-gray-900">{{ stats.schools }}</h3>
+              </div>
+              <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-brand-blue">
+                <ion-icon :icon="business" class="text-2xl"></ion-icon>
+              </div>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+              <div>
+                <p class="text-[12px] font-black text-gray-400 uppercase tracking-widest mb-1">Alumnos</p>
+                <h3 class="text-3xl font-black text-gray-900">{{ stats.students }}</h3>
+              </div>
+              <div class="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center text-orange-600">
+                <ion-icon :icon="school" class="text-2xl"></ion-icon>
+              </div>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+              <div>
+                <p class="text-[12px] font-black text-gray-400 uppercase tracking-widest mb-1">Estatus Sistema</p>
+                <h3 class="text-3xl font-black text-green-600">{{ stats.systemHealth }}%</h3>
+              </div>
+              <div class="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center text-green-600">
+                <ion-icon :icon="trendingUpOutline" class="text-2xl"></ion-icon>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Director Dashboard (New Premium Design) -->
+        <div v-else class="space-y-8 animate-fade-in">
+          
+          <!-- Header Hero -->
+          <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+              <h1 class="text-4xl font-black text-gray-900 tracking-tight leading-none mb-3">Bienvenido, Director {{ directorLastName }}</h1>
+              <p class="text-gray-500 font-bold tracking-wide flex items-center gap-2">
+                {{ formattedDate }} <span class="w-1.5 h-1.5 rounded-full bg-gray-300"></span> Resumen del día escolar
+              </p>
+            </div>
+            <div class="flex items-center gap-3">
+              <button class="bg-white text-gray-700 font-bold px-5 py-3 rounded-xl border border-gray-200 shadow-sm hover:bg-gray-50 transition-all flex items-center gap-2">
+                <ion-icon :icon="megaphoneOutline" class="text-xl"></ion-icon>
+                Difundir Mensaje
+              </button>
+              <button class="bg-brand-blue text-white font-black px-6 py-3 rounded-xl shadow-lg shadow-blue-500/20 hover:bg-blue-600 transition-all flex items-center gap-2">
+                <ion-icon :icon="documentTextOutline" class="text-xl"></ion-icon>
+                Generar Reporte
+              </button>
+            </div>
+          </div>
+
+          <!-- Top Stats Cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Card 1: Matrícula -->
+            <div class="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-all">
+              <div class="flex justify-between items-start mb-4">
+                <div>
+                  <p class="text-[13px] font-bold text-gray-400 tracking-wide mb-1">Matrícula Total</p>
+                  <h3 class="text-4xl font-black text-gray-900 tracking-tighter">{{ formatNumber(directorStats.totalStudents) }}</h3>
+                </div>
+                <div class="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-brand-blue group-hover:scale-110 transition-transform">
+                  <ion-icon :icon="peopleOutline" class="text-2xl"></ion-icon>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5 text-green-600 font-black text-[13px]">
+                <ion-icon :icon="trendingUpOutline"></ion-icon>
+                <span>2% <span class="text-gray-400 font-bold">vs ayer</span></span>
+              </div>
+            </div>
+
+            <!-- Card 2: Asistencia -->
+            <div class="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-md transition-all">
+              <div class="flex justify-between items-start mb-4">
+                <div>
+                  <p class="text-[13px] font-bold text-gray-400 tracking-wide mb-1">Asistencia Hoy</p>
+                  <h3 class="text-4xl font-black text-gray-900 tracking-tighter">{{ directorStats.attendanceRate }}%</h3>
+                </div>
+                <div class="w-14 h-14 bg-green-50 rounded-2xl flex items-center justify-center text-green-600">
+                  <ion-icon :icon="checkmarkCircleOutline" class="text-2xl"></ion-icon>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5 text-green-600 font-black text-[13px]">
+                <ion-icon :icon="trendingUpOutline"></ion-icon>
+                <span>1.5% <span class="text-gray-400 font-bold">vs ayer</span></span>
+              </div>
+            </div>
+
+            <!-- Card 3: Ausencias -->
+            <div class="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-md transition-all">
+              <div class="flex justify-between items-start mb-4">
+                <div>
+                  <p class="text-[13px] font-bold text-gray-400 tracking-wide mb-1">Ausencias</p>
+                  <h3 class="text-4xl font-black text-gray-900 tracking-tighter">{{ directorStats.absentCount }}</h3>
+                </div>
+                <div class="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-500">
+                  <ion-icon :icon="banOutline" class="text-2xl"></ion-icon>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5 text-green-600 font-black text-[13px]">
+                <ion-icon :icon="trendingUpOutline" class="rotate-180"></ion-icon>
+                <span>{{ directorStats.absentCount > 0 ? 'Sin cambios' : 'Excelente' }}</span>
+              </div>
+            </div>
+
+            <!-- New Card 4: Salidas Pendientes -->
+            <div @click="showUnclosedModal = true" class="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-md transition-all cursor-pointer border-l-4 border-l-amber-400">
+              <div class="flex justify-between items-start mb-4">
+                <div>
+                  <p class="text-[13px] font-bold text-gray-400 tracking-wide mb-1">Salidas Pendientes</p>
+                  <h3 class="text-4xl font-black text-gray-900 tracking-tighter">{{ directorStats.unclosedCount }}</h3>
+                </div>
+                <div class="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600 group-hover:rotate-12 transition-transform">
+                  <ion-icon :icon="logOutOutline" class="text-2xl"></ion-icon>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5 text-amber-600 font-black text-[13px]">
+                <span>Alumnos aún en plantel</span>
+              </div>
+            </div>
+
+            <!-- Card 5: Maestros -->
+            <div class="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-md transition-all">
+              <div class="flex justify-between items-start mb-4">
+                <div>
+                  <p class="text-[13px] font-bold text-gray-400 tracking-wide mb-1">Maestros</p>
+                  <h3 class="text-4xl font-black text-gray-900 tracking-tighter">{{ directorStats.staffPresent }}/{{ directorStats.totalStaff }}</h3>
+                </div>
+                <div class="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600">
+                  <ion-icon :icon="personAddOutline" class="text-2xl"></ion-icon>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5 text-green-600 font-black text-[13px]">
+                 <span>{{ directorStats.staffPresent }} Presentes</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Middle Row: Attendance by Group and Entry Summary -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Attendance by Grade & Group -->
+            <div class="lg:col-span-2 bg-white rounded-[40px] shadow-sm border border-gray-100 p-8 flex flex-col h-full">
+              <div class="flex justify-between items-center mb-8">
+                <div>
+                  <h3 class="text-xl font-black text-gray-900 tracking-tight">Asistencia por Grado y Grupo</h3>
+                  <p class="text-gray-400 text-sm font-bold">Estado detallado por sección</p>
+                </div>
+                <button class="w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-50 transition-all">
+                  <ion-icon :icon="ellipsisVerticalOutline"></ion-icon>
+                </button>
+              </div>
+
+              <div class="space-y-6 flex-grow">
+                <div v-for="group in directorStats.groupStats" :key="group.grade + group.group_letter" class="flex flex-col gap-2">
+                  <div class="flex justify-between items-end">
+                    <div>
+                      <span class="text-[15px] font-black text-gray-900">{{ group.grade }}º {{ group.group_letter }}</span>
+                      <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{{ group.present }}/{{ group.total }} Estudiantes</p>
+                    </div>
+                    <span :class="group.percentage >= 100 ? 'text-green-600' : 'text-gray-500'" class="text-[11px] font-black uppercase tracking-widest">
+                      {{ group.percentage >= 100 ? 'Completo' : group.percentage + '% Asistencia' }}
+                    </span>
+                  </div>
+                  <div class="w-full h-3 bg-gray-50 rounded-full overflow-hidden border border-gray-100">
+                    <div 
+                      class="h-full transition-all duration-1000 ease-out rounded-full"
+                      :class="group.percentage >= 100 ? 'bg-green-500 shadow-sm shadow-green-200' : 'bg-brand-blue shadow-sm shadow-blue-200'"
+                      :style="{ width: group.percentage + '%' }"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Entry Summary Visualization -->
+            <div class="bg-white rounded-[40px] shadow-sm border border-gray-100 p-8 flex flex-col items-center">
+              <div class="w-full mb-8">
+                <h3 class="text-xl font-black text-gray-900 tracking-tight">Resumen de Entrada</h3>
+              </div>
+              
+              <div class="relative w-full aspect-square max-w-[280px] flex items-center justify-center mb-8">
+                <svg viewBox="0 0 36 36" class="w-full h-full transform -rotate-90">
+                  <circle cx="18" cy="18" r="15.5" fill="none" stroke="#f3f4f6" stroke-width="3"></circle>
+                  
+                  <!-- On Time Segment -->
+                  <circle 
+                    cx="18" cy="18" r="15.5" fill="none" 
+                    stroke="#2563eb" stroke-width="3" 
+                    stroke-dasharray="97.4 100"
+                    stroke-dashoffset="0"
+                    stroke-linecap="round"
+                    class="transition-all duration-1000"
+                  ></circle>
+
+                  <!-- Late Segment -->
+                  <circle 
+                    cx="18" cy="18" r="15.5" fill="none" 
+                    stroke="#fbbf24" stroke-width="3" 
+                    stroke-dasharray="4.4 100"
+                    stroke-dashoffset="-92"
+                    stroke-linecap="round"
+                    class="transition-all duration-1000"
+                  ></circle>
+
+                  <!-- Absent Segment -->
+                  <circle 
+                    cx="18" cy="18" r="15.5" fill="none" 
+                    stroke="#ef4444" stroke-width="3" 
+                    stroke-dasharray="3.6 100"
+                    stroke-dashoffset="-96.4"
+                    stroke-linecap="round"
+                    class="transition-all duration-1000"
+                  ></circle>
+                </svg>
+                
+                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                  <span class="text-5xl font-black text-gray-900 tracking-tighter">{{ formatNumber(directorStats.totalStudents) }}</span>
+                  <span class="text-[12px] font-bold text-gray-400 uppercase tracking-widest mt-1">Alumnos</span>
+                </div>
+              </div>
+
+              <!-- Legend -->
+              <div class="w-full space-y-4">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <div class="w-3 h-3 rounded-full bg-brand-blue"></div>
+                    <span class="text-[13px] font-bold text-gray-600">A tiempo</span>
+                  </div>
+                  <span class="text-[13px] font-black text-gray-900">{{ formatNumber(directorStats.entrySummary.onTime) }} (92%)</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <div class="w-3 h-3 rounded-full bg-amber-400"></div>
+                    <span class="text-[13px] font-bold text-gray-600">Tarde</span>
+                  </div>
+                  <span class="text-[13px] font-black text-gray-900">{{ directorStats.entrySummary.late }} (4.4%)</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                    <span class="text-[13px] font-bold text-gray-600">Ausente</span>
+                  </div>
+                  <span class="text-[13px] font-black text-gray-900">{{ directorStats.entrySummary.absent }} (3.6%)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Row: Staff Status -->
+          <div class="bg-white rounded-[40px] shadow-sm border border-gray-100 p-8">
+            <div class="flex items-center justify-between mb-8">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-brand-blue">
+                   <ion-icon :icon="peopleOutline" class="text-lg"></ion-icon>
+                </div>
+                <h3 class="text-xl font-black text-gray-900 tracking-tight">Estado del Personal</h3>
+              </div>
+              <div class="flex items-center gap-4 text-[11px] font-black uppercase tracking-widest">
+                <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-green-500"></div> Presente</div>
+                <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-gray-300"></div> Ausente</div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div v-for="person in directorStats.staff" :key="person.id" class="p-4 rounded-3xl border border-gray-50 bg-gray-50/30 flex items-center gap-4 group hover:bg-white hover:shadow-md transition-all cursor-pointer">
+                <div class="relative">
+                  <div class="w-14 h-14 rounded-2xl overflow-hidden border-2 border-white shadow-sm flex items-center justify-center bg-orange-100">
+                    <img v-if="person.avatar_url" :src="person.avatar_url" class="w-full h-full object-cover">
+                    <ion-icon v-else :icon="personOutline" class="text-2xl text-gray-500"></ion-icon>
+                  </div>
+                  <div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white" :class="person.status === 'present' ? 'bg-green-500' : 'bg-gray-300'"></div>
+                </div>
+                <div>
+                  <h4 class="text-sm font-black text-gray-900 leading-none mb-1">{{ person.name }}</h4>
+                  <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Cuerpo Docente</p>
+                </div>
+                <div class="ml-auto text-right">
+                   <span class="text-[11px] font-black text-green-600 bg-white px-2 py-1 rounded-lg border border-gray-50">{{ person.time }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-10 pt-6 border-t border-gray-50 text-center">
+               <a href="#" class="text-brand-blue font-black text-sm uppercase tracking-widest hover:underline">Ver lista completa de personal</a>
+            </div>
+          </div>
+        </div>
+
         <!-- Footer Global App in Admin Area -->
-        <div class="text-center text-[11px] font-semibold text-gray-400 mt-4 pb-2 tracking-wide">
-          © 2026 SchoolTrack Systems. Todos los derechos reservados. Versión 2.1.0
+        <div class="text-center text-[11px] font-semibold text-gray-400 mt-12 pb-4 tracking-wide uppercase">
+          © 2026 miEscuelaApp. Todos los derechos reservados. Versión 1.0.0
+        </div>
+      </div>
+
+      <!-- Custom Modal for Unclosed Records (Integrated) -->
+      <div v-if="showUnclosedModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm transition-opacity">
+        <div class="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-fade-in">
+          <div class="p-6 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0">
+            <div>
+              <h2 class="text-xl font-black text-gray-900 leading-none mb-1">Salidas Pendientes</h2>
+              <p class="text-[12px] font-bold text-gray-400 uppercase tracking-widest">Alumnos que no han marcado salida hoy</p>
+            </div>
+            <button @click="showUnclosedModal = false" class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-all">
+              <ion-icon :icon="closeOutline" class="text-xl"></ion-icon>
+            </button>
+          </div>
+
+          <div class="flex-grow overflow-y-auto p-6 space-y-4 custom-scrollbar">
+            <div v-if="loadingUnclosed" class="flex flex-col items-center justify-center py-12">
+              <div class="w-10 h-10 border-4 border-brand-blue border-t-transparent rounded-full animate-spin mb-4"></div>
+              <p class="text-sm font-bold text-gray-500 uppercase tracking-widest">Cargando lista...</p>
+            </div>
+            
+            <div v-else-if="unclosedStudents.length === 0" class="text-center py-12">
+              <div class="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center text-green-500 mx-auto mb-4">
+                 <ion-icon :icon="checkmarkCircleOutline" class="text-4xl"></ion-icon>
+              </div>
+              <h4 class="text-lg font-black text-gray-900 mb-1">¡Todo en orden!</h4>
+              <p class="text-gray-400 font-medium px-8 text-sm">No hay alumnos con salidas pendientes registradas para hoy.</p>
+            </div>
+
+            <div v-else v-for="record in unclosedStudents" :key="record.id" class="p-4 bg-gray-50 rounded-2xl flex items-center gap-4 border border-gray-100 hover:border-amber-200 hover:bg-amber-50/10 transition-all">
+              <div class="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center text-brand-blue font-black overflow-hidden shadow-sm">
+                 <img v-if="record.student.photo_url" :src="record.student.photo_url" class="w-full h-full object-cover">
+                 <span v-else>{{ record.student.first_name[0] }}{{ record.student.last_name[0] }}</span>
+              </div>
+              <div class="flex-grow">
+                <h4 class="text-sm font-black text-gray-900 leading-none mb-1">{{ record.student.first_name }} {{ record.student.last_name }}</h4>
+                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{{ record.student.grade }}º {{ record.student.group_letter }} • ID: {{ record.student.enrollment_code }}</p>
+              </div>
+              <div class="text-right">
+                 <div class="flex items-center gap-1 text-brand-blue mb-0.5">
+                    <ion-icon :icon="timeOutline"></ion-icon>
+                    <span class="text-xs font-black">{{ new Date(record.scanned_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }}</span>
+                 </div>
+                 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Entrada</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-6 border-t border-gray-50 flex justify-end bg-gray-50/50">
+            <button @click="showUnclosedModal = false" class="bg-brand-blue text-white font-black px-8 py-3 rounded-xl shadow-lg shadow-blue-500/20 hover:bg-blue-600 transition-all">
+              Cerrar
+            </button>
+          </div>
         </div>
       </div>
     </ion-content>
@@ -132,15 +371,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { IonPage, IonContent, IonIcon, IonRefresher, IonRefresherContent } from '@ionic/vue';
 import { 
-  downloadOutline, addOutline, trendingUpOutline, business, 
-  push, documentText, grid, refreshOutline
+  trendingUpOutline, business, school, megaphoneOutline, documentTextOutline, peopleOutline, 
+  checkmarkCircleOutline, banOutline, personAddOutline, ellipsisVerticalOutline, personOutline,
+  logOutOutline, closeOutline, timeOutline
 } from 'ionicons/icons';
 import api from '@/services/api';
+import { storage } from '@/services/storage';
 
 const loading = ref(true);
+const isAdmin = ref(false);
+const schoolName = ref('');
+const currentUser = ref<any>(null);
+
+const showUnclosedModal = ref(false);
+const unclosedStudents = ref<any[]>([]);
+const loadingUnclosed = ref(false);
+
 const stats = ref({
   schools: 0,
   students: 0,
@@ -149,12 +398,55 @@ const stats = ref({
   systemHealth: 0
 });
 
+// Director stats state
+const directorStats = ref({
+  totalStudents: 0,
+  attendanceToday: 0,
+  attendanceRate: 0,
+  attendanceTrend: '+0',
+  absentCount: 0,
+  unclosedCount: 0,
+  staffPresent: 0,
+  totalStaff: 0,
+  entrySummary: {
+    onTime: 0,
+    late: 0,
+    absent: 0
+  },
+  groupStats: [] as any[],
+  staff: [] as any[]
+});
+
+const formattedDate = computed(() => {
+  return new Date().toLocaleDateString('es-ES', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+});
+
+const directorLastName = computed(() => {
+  if (!currentUser.value?.name) return 'Martínez';
+  const parts = currentUser.value.name.split(' ');
+  return parts[parts.length - 1];
+});
+
+const formatNumber = (num: number) => {
+  return new Intl.NumberFormat('es-MX').format(num);
+};
+
 const fetchDashboardStats = async () => {
   loading.value = true;
   try {
-    const res = await api.get('/admin/stats');
+    const endpoint = isAdmin.value ? '/admin/stats' : '/admin/director/stats';
+    const res = await api.get(endpoint);
+    
     if (res.data.success) {
-      stats.value = res.data.data;
+      if (isAdmin.value) {
+        stats.value = res.data.data;
+      } else {
+        directorStats.value = res.data.data;
+      }
     }
   } catch (error) {
     console.error('Error fetching dashboard stats', error);
@@ -168,7 +460,73 @@ const handleRefresh = async (event: any) => {
   event.target.complete();
 };
 
-onMounted(() => {
+const fetchUnclosedStudents = async () => {
+  loadingUnclosed.value = true;
+  try {
+    const res = await api.get('/admin/reports/unclosed');
+    if (res.data.success) {
+      unclosedStudents.value = res.data.data;
+    }
+  } catch (error) {
+    console.error('Error fetching unclosed students', error);
+  } finally {
+    loadingUnclosed.value = false;
+  }
+};
+
+const watchUnclosedModal = (val: boolean) => {
+  if (val) fetchUnclosedStudents();
+};
+
+import { watch } from 'vue';
+watch(showUnclosedModal, watchUnclosedModal);
+
+onMounted(async () => {
+  const user = await storage.get('auth_user');
+  if (user) {
+    currentUser.value = user;
+    isAdmin.value = user.role === 'super_admin';
+    schoolName.value = user.school?.name || '';
+  }
+  
   fetchDashboardStats();
 });
 </script>
+
+<style scoped>
+.font-sans {
+  font-family: 'Outfit', sans-serif, system-ui;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Custom donut transition */
+svg circle {
+  transition: stroke-dasharray 1s ease-in-out, stroke-dashoffset 1s ease-in-out;
+}
+
+/* Modal Styles for pending exits */
+.unclosed-modal-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 10px;
+}
+</style>
