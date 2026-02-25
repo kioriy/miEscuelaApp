@@ -59,12 +59,17 @@
               Escuelas
             </router-link>
 
-            <router-link to="/admin/users" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/users') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
+            <router-link v-if="isAdmin" to="/admin/users" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/users') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
               <ion-icon :icon="people" class="text-xl"></ion-icon>
-              {{ isAdmin ? 'Usuarios' : 'Profesores' }}
+              Usuarios
             </router-link>
 
-            <router-link v-if="!isAdmin" to="#" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold text-gray-500 hover:bg-gray-50 hover:text-gray-900">
+            <router-link v-if="!isAdmin" to="/admin/teachers" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/teachers') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
+              <ion-icon :icon="people" class="text-xl"></ion-icon>
+              Profesores
+            </router-link>
+
+            <router-link v-if="!isAdmin" to="/admin/students" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/students') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
               <ion-icon :icon="school" class="text-xl"></ion-icon>
               Estudiantes
             </router-link>
@@ -78,6 +83,11 @@
               <ion-icon :icon="settings" class="text-xl"></ion-icon>
               Configuración
             </a>
+
+            <router-link v-if="isAdmin || userProfile.role === 'director'" to="/admin/sync-kiosk" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/sync-kiosk') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
+              <ion-icon :icon="time" class="text-xl"></ion-icon>
+              Sincronizar Kiosco
+            </router-link>
 
             <!-- Accesos Rápidos Section -->
             <div class="pt-8 pb-2 px-4">
@@ -132,7 +142,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { IonPage, IonIcon, IonRouterOutlet } from '@ionic/vue';
 import { 
-  school, grid, business, people, barChart, settings, logOutOutline, menuOutline, closeOutline, personOutline, notifications, calendar
+  school, grid, business, people, barChart, settings, time, logOutOutline, menuOutline, closeOutline, personOutline, notifications, calendar
 } from 'ionicons/icons';
 import { useRouter } from 'vue-router';
 import { storage } from '@/services/storage';

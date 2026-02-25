@@ -11,4 +11,9 @@ class AttendanceLog extends Model
 
     protected $table = 'attendance_logs';
     protected $guarded = [];
+
+    public function student()
+    {
+        return $this->belongsTo(Student::class);
+    }
 }

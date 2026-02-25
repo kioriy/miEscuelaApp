@@ -11,6 +11,11 @@ import SchoolFormView from '../views/admin/SchoolFormView.vue';
 import UsersView from '../views/admin/UsersView.vue';
 import UserDetailView from '../views/admin/UserDetailView.vue';
 import UserFormView from '../views/admin/UserFormView.vue';
+import StudentsView from '../views/admin/StudentsView.vue';
+import StudentDetailView from '../views/admin/StudentDetailView.vue';
+import StudentFormView from '../views/admin/StudentFormView.vue';
+import TimeSyncView from '../views/admin/TimeSyncView.vue';
+import { storage, storageReady } from '@/services/storage';
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -85,6 +90,46 @@ const routes: Array<RouteRecordRaw> = [
         path: 'users/:id/edit',
         name: 'UserEdit',
         component: UserFormView
+      },
+      {
+        path: 'students',
+        name: 'AdminStudents',
+        component: StudentsView
+      },
+      {
+        path: 'students/:id',
+        name: 'StudentDetail',
+        component: StudentDetailView
+      },
+      {
+        path: 'students/create',
+        name: 'StudentCreate',
+        component: StudentFormView
+      },
+      {
+        path: 'students/:id/edit',
+        name: 'StudentEdit',
+        component: StudentFormView
+      },
+      {
+        path: 'teachers',
+        name: 'AdminTeachers',
+        component: () => import('../views/admin/TeachersView.vue')
+      },
+      {
+        path: 'teachers/create',
+        name: 'TeacherCreate',
+        component: () => import('../views/admin/TeacherFormView.vue')
+      },
+      {
+        path: 'teachers/:id/edit',
+        name: 'TeacherEdit',
+        component: () => import('../views/admin/TeacherFormView.vue')
+      },
+      {
+        path: 'sync-kiosk',
+        name: 'TimeSync',
+        component: TimeSyncView
       }
     ]
   }
@@ -96,26 +141,27 @@ const router = createRouter({
 })
 
 // === Global Route Guard ===
-router.beforeEach((to, from, next) => {
-  // 1. Bypass (Pause) Guards if we are in Localhost development
-  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+router.beforeEach(async (to, from, next) => {
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
 
-  if (isLocalhost) {
-    console.warn('⚠️ [Router Guard] Bypassed for localhost development.');
-    return next();
+  // Asegurarse de que el storage esté inicializado
+  await storageReady;
+
+  // Intentar obtener el token de storage
+  const token = await storage.get('auth_token');
+  const isAuthenticated = !!token;
+
+  if (requiresAuth && !isAuthenticated) {
+    console.warn('🔒 [Router Guard] Acceso denegado: Se requiere autenticación.');
+    return next('/login');
   }
 
-  // 2. Add real authentication logic here for production
-  // Example: const isAuthenticated = checkAuth();
-  // const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
+  // Si ya está autenticado e intenta ir al login, mandarlo al dashboard
+  if (to.path === '/login' && isAuthenticated) {
+    return next('/admin/dashboard');
+  }
 
-  // if (requiresAuth && !isAuthenticated) {
-  //   next('/login');
-  // } else {
-  //   next();
-  // }
-
-  next(); // Temporary pass-through until real auth is plugged in
+  next();
 });
 
 export default router

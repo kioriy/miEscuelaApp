@@ -213,14 +213,14 @@
       </div>
 
       <div 
-        @click="$refs.fileInput.click()"
+        @click="triggerFileUpload"
         @dragover.prevent="isDragging = true"
         @dragleave.prevent="isDragging = false"
         @drop.prevent="handleDrop"
         :class="{'border-brand-blue bg-blue-50/20': isDragging, 'border-gray-200': !isDragging}"
         class="border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center hover:border-brand-blue hover:bg-blue-50/10 transition-all cursor-pointer group mt-2"
       >
-        <input type="file" ref="fileInput" @change="handleFileSelect" class="hidden" accept=".csv,.xlsx,.json,.txt" />
+        <input id="bulkUploadInput" type="file" ref="fileInput" @change="handleFileSelect" class="hidden" accept=".csv,.xlsx,.json,.txt" />
         
         <div v-if="!isUploading" class="flex flex-col items-center">
           <div class="flex gap-8 mb-6 text-gray-400 group-hover:text-brand-blue transition-colors">
@@ -316,6 +316,12 @@ const isDragging = ref(false);
 const isUploading = ref(false);
 const importResults = ref<any>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
+
+const triggerFileUpload = () => {
+  if (fileInput.value) {
+    fileInput.value.click();
+  }
+};
 
 const filteredSchools = computed(() => {
   let result = schools.value;

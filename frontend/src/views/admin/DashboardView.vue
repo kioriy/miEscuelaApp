@@ -438,8 +438,14 @@ const formatNumber = (num: number) => {
 const fetchDashboardStats = async () => {
   loading.value = true;
   try {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfTodayISO = todayStart.toISOString();
+
     const endpoint = isAdmin.value ? '/admin/stats' : '/admin/director/stats';
-    const res = await api.get(endpoint);
+    const res = await api.get(endpoint, {
+      params: { local_start: startOfTodayISO }
+    });
     
     if (res.data.success) {
       if (isAdmin.value) {
@@ -463,7 +469,13 @@ const handleRefresh = async (event: any) => {
 const fetchUnclosedStudents = async () => {
   loadingUnclosed.value = true;
   try {
-    const res = await api.get('/admin/reports/unclosed');
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfTodayISO = todayStart.toISOString();
+
+    const res = await api.get('/admin/reports/unclosed', {
+      params: { local_start: startOfTodayISO }
+    });
     if (res.data.success) {
       unclosedStudents.value = res.data.data;
     }

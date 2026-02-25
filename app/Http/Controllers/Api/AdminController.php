@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Student;
 use App\Models\School;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Shuchkin\SimpleXLSX;
 
@@ -93,7 +95,7 @@ class AdminController extends Controller
                 $image_base64 = base64_decode($image_parts[1]);
                 $fileName = 'logo_' . time() . '_' . uniqid() . '.' . $image_type;
 
-                \Illuminate\Support\Facades\Storage::disk('public')->put('schools/logos/' . $fileName, $image_base64);
+                Storage::disk('public')->put('schools/logos/' . $fileName, $image_base64);
                 $logoPath = 'schools/logos/' . $fileName;
             }
         }
@@ -218,7 +220,7 @@ class AdminController extends Controller
                 $image_type = $image_type_aux[1] ?? 'png';
                 $image_base64 = base64_decode($image_parts[1]);
                 $fileName = 'logo_' . time() . '_' . uniqid() . '.' . $image_type;
-                \Illuminate\Support\Facades\Storage::disk('public')->put('schools/logos/' . $fileName, $image_base64);
+                Storage::disk('public')->put('schools/logos/' . $fileName, $image_base64);
                 $logoPath = 'schools/logos/' . $fileName;
             }
         }
@@ -386,48 +388,11 @@ class AdminController extends Controller
         }
     }
 
-    public function getStudents(Request $request, $school_id)
-    {
-        $query = Student::where('school_id', $school_id);
-
-        if ($request->has('search')) {
-            $q = $request->search;
-            $query->where(function ($sub) use ($q) {
-                $sub->where('first_name', 'like', "%$q%")
-                    ->orWhere('last_name', 'like', "%$q%")
-                    ->orWhere('enrollment_code', 'like', "%$q%");
-            });
-        }
-
-        if ($request->has('grade') && $request->grade !== 'all') {
-            $query->where('grade', $request->grade);
-        }
-
-        if ($request->has('group') && $request->group !== 'all') {
-            $query->where('group_letter', $request->group);
-        }
-
-        return response()->json([
-            'success' => true,
-            'data' => $query->get()
-        ]);
-    }
-
-    public function destroyStudent($id)
-    {
-        $student = Student::findOrFail($id);
-        $student->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Alumno eliminado correctamente.'
-        ]);
-    }
-
-    public function getLeaderboard($school_id)
+    public function getLeaderboard(Request $request, $school_id)
     {
         // Top 5 alumnos con más asistencias hoy
-        $today = now()->startOfDay();
+        $localStart = $request->query('local_start');
+        $today = $localStart ? \Illuminate\Support\Carbon::parse($localStart)->toDateTimeString() : now()->startOfDay();
 
         $leaderboard = \App\Models\AttendanceLog::where('school_id', $school_id)
             ->where('scanned_at', '>=', $today)
@@ -456,8 +421,9 @@ class AdminController extends Controller
             return response()->json(['success' => false, 'message' => 'No school associated.'], 403);
         }
 
-        $today = now()->startOfDay();
-        $yesterday = now()->subDay()->startOfDay();
+        $localStart = $request->query('local_start');
+        $today = $localStart ? \Illuminate\Support\Carbon::parse($localStart)->toDateTimeString() : now()->startOfDay();
+        $yesterday = \Illuminate\Support\Carbon::parse($today)->subDay()->toDateTimeString();
 
         // 1. Basic Counts
         $totalStudents = Student::where('school_id', $schoolId)->count();
@@ -480,7 +446,7 @@ class AdminController extends Controller
         $prevRate = $totalStudents > 0 ? round(($attendanceYesterday / $totalStudents) * 100) : 0;
 
         // 3. Entry Summary (Mocking "Late" for now until thresholds exist)
-        $lateThreshold = now()->startOfDay()->addHours(8); // 8:00 AM
+        $lateThreshold = \Illuminate\Support\Carbon::parse($today)->addHours(8); // 8:00 AM
 
         $onTime = \App\Models\AttendanceLog::where('school_id', $schoolId)
             ->where('scanned_at', '>=', $today)
@@ -515,7 +481,7 @@ class AdminController extends Controller
 
         // 5. Unclosed Records Today
         $latestLogsSubToday = \App\Models\AttendanceLog::where('school_id', $schoolId)
-            ->whereDate('scanned_at', $today)
+            ->where('scanned_at', '>=', $today)
             ->select('student_id', DB::raw('MAX(scanned_at) as last_scanned_at'))
             ->groupBy('student_id');
 
@@ -561,34 +527,289 @@ class AdminController extends Controller
     }
     public function getUnclosedAttendance(Request $request)
     {
-        $user = $request->user();
-        $schoolId = $user->school_id;
-        $date = $request->query('date', now()->toDateString());
+        $school_id = $request->user()->school_id;
+        $localStart = $request->query('local_start');
 
-        if (!$schoolId) {
-            return response()->json(['success' => false, 'message' => 'No school associated.'], 403);
-        }
+        // Si no mandan local_start, intentamos deducirlo solo por fecha para el subquery
+        $todayDate = $localStart ? \Illuminate\Support\Carbon::parse($localStart)->toDateString() : now()->toDateString();
+        $todayDateTime = $localStart ? \Illuminate\Support\Carbon::parse($localStart)->toDateTimeString() : now()->startOfDay()->toDateTimeString();
 
-        // Subconsulta para encontrar el último log de cada alumno en la fecha dada
-        $latestLogsSubquery = \App\Models\AttendanceLog::where('school_id', $schoolId)
-            ->whereDate('scanned_at', $date)
-            ->select('student_id', DB::raw('MAX(scanned_at) as last_scanned_at'))
+        $latestLogsSubquery = \App\Models\AttendanceLog::select('student_id', DB::raw('MAX(scanned_at) as last_scanned_at'))
+            ->where('school_id', $school_id)
+            ->where('scanned_at', '>=', $todayDateTime)
             ->groupBy('student_id');
 
         $unclosedRecords = \App\Models\AttendanceLog::joinSub($latestLogsSubquery, 'latest_logs', function ($join) {
             $join->on('attendance_logs.student_id', '=', 'latest_logs.student_id')
                 ->on('attendance_logs.scanned_at', '=', 'latest_logs.last_scanned_at');
         })
+            ->with('student')
             ->where('attendance_logs.type', 'in')
-            ->with(['student' => function ($q) {
-                $q->select('id', 'first_name', 'last_name', 'enrollment_code', 'grade', 'group_letter');
-            }])
+            ->where('attendance_logs.school_id', $school_id)
             ->get();
 
         return response()->json([
             'success' => true,
-            'date' => $date,
             'data' => $unclosedRecords
         ]);
+    }
+
+    /**
+     * Gestión de Estudiantes y Fotos
+     */
+
+    public function getStudents(Request $request)
+    {
+        $user = $request->user();
+        $query = \App\Models\Student::where('school_id', $user->school_id);
+
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('enrollment_code', 'like', "%{$search}%");
+            });
+        }
+
+        $students = $query->orderBy('last_name')->get();
+
+        // Transform to include absolute photo URL
+        $students->transform(function ($student) {
+            $student->photo_url = $student->photo_path ? asset('storage/' . $student->photo_path) : null;
+            return $student;
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $students
+        ]);
+    }
+
+    public function storeStudent(Request $request)
+    {
+        $request->validate([
+            'first_name' => 'required|string|max:100',
+            'last_name' => 'required|string|max:100',
+            'enrollment_code' => 'required|string|unique:students,enrollment_code,NULL,id,school_id,' . $request->user()->school_id,
+            'school_level' => 'required|string',
+            'grade' => 'required|string',
+            'group_letter' => 'required|string',
+        ]);
+
+        $data = $request->except(['photo_url', 'photo']);
+        $data['school_id'] = $request->user()->school_id;
+
+        if ($request->hasFile('photo')) {
+            $path = $request->file('photo')->store('students/photos', 'public');
+            $data['photo_path'] = $path;
+            $data['photo_hash'] = md5_file($request->file('photo')->getRealPath());
+        }
+
+        $student = \App\Models\Student::create($data);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Estudiante creado correctamente.',
+            'data' => $student
+        ]);
+    }
+
+    public function showStudent(Request $request, $id)
+    {
+        $student = \App\Models\Student::where('school_id', $request->user()->school_id)->findOrFail($id);
+        $student->photo_url = $student->photo_path ? asset('storage/' . $student->photo_path) : null;
+
+        return response()->json([
+            'success' => true,
+            'data' => $student
+        ]);
+    }
+
+    public function updateStudent(Request $request, $id)
+    {
+        $student = \App\Models\Student::where('school_id', $request->user()->school_id)->findOrFail($id);
+
+        $request->validate([
+            'first_name' => 'required|string|max:100',
+            'last_name' => 'required|string|max:100',
+            'enrollment_code' => 'required|string|unique:students,enrollment_code,' . $id . ',id,school_id,' . $request->user()->school_id,
+        ]);
+
+        $data = $request->except(['photo_url', 'photo']);
+
+        if ($request->hasFile('photo')) {
+            // Delete old photo if exists
+            if ($student->photo_path) {
+                Storage::disk('public')->delete($student->photo_path);
+            }
+            $path = $request->file('photo')->store('students/photos', 'public');
+            $data['photo_path'] = $path;
+            $data['photo_hash'] = md5_file($request->file('photo')->getRealPath());
+        }
+
+        $student->update($data);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Estudiante actualizado correctamente.',
+            'data' => $student
+        ]);
+    }
+
+    public function destroyStudent(Request $request, $id)
+    {
+        $student = \App\Models\Student::where('school_id', $request->user()->school_id)->findOrFail($id);
+
+        if ($student->photo_path) {
+            Storage::disk('public')->delete($student->photo_path);
+        }
+
+        $student->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Estudiante eliminado.'
+        ]);
+    }
+
+    /**
+     * Carga Masiva de Fotos desde ZIP
+     * Matching por nombre normalizado: nombre_apellido.jpg
+     */
+    public function bulkUploadPhotos(Request $request)
+    {
+        Log::info('Bulk Upload Started', [
+            'has_file' => $request->hasFile('zip_file'),
+            'content_length' => $request->headers->get('content-length'),
+            'all_params' => $request->all(),
+            'files' => $_FILES
+        ]);
+
+        // Detectar si el archivo excedió los límites de PHP (upload_max_filesize / post_max_size)
+        if (!$request->hasFile('zip_file') && count($request->all()) === 0 && $request->headers->get('content-length') > 0) {
+            Log::error('Bulk Upload Failed: File exceeds PHP limits (detected by content-length)');
+            return response()->json([
+                'success' => false,
+                'message' => 'El archivo ZIP es demasiado grande para la configuración actual de PHP. Por favor aumenta upload_max_filesize y post_max_size en tu php.ini.'
+            ], 422);
+        }
+
+        // Usar Validator manualmente para capturar y devolver el error exacto
+        $validator = Validator::make($request->all(), [
+            'zip_file' => 'required|file|max:102400', // Subido a 100MB
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de validación: ' . implode(', ', $validator->errors()->all()),
+                'debug' => [
+                    'has_file' => $request->hasFile('zip_file'),
+                    'file_size' => $request->hasFile('zip_file') ? $request->file('zip_file')->getSize() : 0,
+                    'mime' => $request->hasFile('zip_file') ? $request->file('zip_file')->getMimeType() : 'none'
+                ]
+            ], 422);
+        }
+
+        // Validación extra de extensión para ser menos estrictos con MIME pero seguros con el archivo
+        $zipFile = $request->file('zip_file');
+        if (!in_array(strtolower($zipFile->getClientOriginalExtension()), ['zip'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'El archivo debe tener extensión .zip'
+            ], 422);
+        }
+
+        $school_id = $request->user()->school_id;
+        $zipFile = $request->file('zip_file');
+
+        $tempPath = storage_path('app/temp/bulk_' . uniqid());
+        mkdir($tempPath, 0777, true);
+
+        $zip = new \ZipArchive;
+        if ($zip->open($zipFile->getRealPath()) === TRUE) {
+            $zip->extractTo($tempPath);
+            $zip->close();
+        } else {
+            return response()->json(['success' => false, 'message' => 'No se pudo abrir el archivo ZIP.'], 422);
+        }
+
+        $files = scandir($tempPath);
+        $successCount = 0;
+        $errors = [];
+
+        // Obtener todos los alumnos de la escuela para cachear nombres
+        $students = \App\Models\Student::where('school_id', $school_id)->get();
+
+        foreach ($files as $filename) {
+            if ($filename === '.' || $filename === '..' || is_dir($tempPath . '/' . $filename)) continue;
+
+            $extension = pathinfo($filename, PATHINFO_EXTENSION);
+            if (!in_array(strtolower($extension), ['jpg', 'jpeg', 'png'])) continue;
+
+            // Normalizar el nombre del archivo (quitar extensión y normalizar texto)
+            $nameInFile = $this->normalizeString(pathinfo($filename, PATHINFO_FILENAME));
+
+            $matchedStudent = $students->first(function ($s) use ($nameInFile) {
+                $fullName = $this->normalizeString($s->first_name . ' ' . $s->last_name);
+                return $fullName === $nameInFile;
+            });
+
+            if ($matchedStudent) {
+                $newPath = 'students/photos/' . uniqid() . '.' . $extension;
+                Storage::disk('public')->put($newPath, file_get_contents($tempPath . '/' . $filename));
+
+                // Borrar foto anterior
+                if ($matchedStudent->photo_path) {
+                    Storage::disk('public')->delete($matchedStudent->photo_path);
+                }
+
+                $matchedStudent->update([
+                    'photo_path' => $newPath,
+                    'photo_hash' => md5_file($tempPath . '/' . $filename)
+                ]);
+                $successCount++;
+            } else {
+                $errors[] = $filename . " (No se encontró coincidencia con el nombre)";
+            }
+        }
+
+        // Limpiar temp
+        $this->recursiveDelete($tempPath);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'success' => $successCount,
+                'errors' => $errors
+            ]
+        ]);
+    }
+
+    private function normalizeString($str)
+    {
+        $str = strtolower($str);
+        $str = str_replace(
+            ['á', 'é', 'í', 'ó', 'ú', 'ñ', 'ü'],
+            ['a', 'e', 'i', 'o', 'u', 'n', 'u'],
+            $str
+        );
+        // Reemplazar cualquier cosa que no sea letras o números por un espacio
+        $str = preg_replace('/[^a-z0-9]/', ' ', $str);
+        // Colapsar espacios múltiples y limpiar
+        $str = preg_replace('/\s+/', ' ', $str);
+        return trim($str);
+    }
+
+    private function recursiveDelete($dir)
+    {
+        if (!file_exists($dir)) return true;
+        if (!is_dir($dir)) return unlink($dir);
+        foreach (scandir($dir) as $item) {
+            if ($item == '.' || $item == '..') continue;
+            if (!$this->recursiveDelete($dir . DIRECTORY_SEPARATOR . $item)) return false;
+        }
+        return rmdir($dir);
     }
 }

@@ -24,9 +24,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/sync/monitor/pull', [MonitorSyncController::class, 'pullData']);
     Route::post('/sync/monitor/push', [AttendanceSyncController::class, 'pushData']);
     Route::get('/sync/monitor/stats', [AttendanceSyncController::class, 'getKioskStats']);
+    Route::post('/sync/monitor/apply-time-offset', [KioskSetupController::class, 'applyTimeOffset']);
 
     // Rutas para el Panel de Administración (Vue Frontend)
     Route::prefix('admin')->group(function () {
+        Route::get('/school/time-sync-token', [KioskSetupController::class, 'getTimeSyncToken']);
+
         Route::get('/stats', [AdminController::class, 'dashboardStats']);
         // Schools Management
         Route::get('/schools', [AdminController::class, 'getSchools']);
@@ -42,10 +45,25 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/users/{id}', [AdminController::class, 'destroyUser']);
         Route::post('/users/{id}/resend-welcome', [AdminController::class, 'resendWelcomeEmail']);
 
+        // Teachers Management
+        Route::get('/teachers', [\App\Http\Controllers\Api\Admin\TeacherController::class, 'index']);
+        Route::get('/teachers/{id}', [\App\Http\Controllers\Api\Admin\TeacherController::class, 'show']);
+        Route::post('/teachers', [\App\Http\Controllers\Api\Admin\TeacherController::class, 'store']);
+        Route::put('/teachers/{id}', [\App\Http\Controllers\Api\Admin\TeacherController::class, 'update']);
+        Route::delete('/teachers/{id}', [\App\Http\Controllers\Api\Admin\TeacherController::class, 'destroy']);
+
         // Students Management
         Route::get('/schools/{id}/students', [AdminController::class, 'getStudents']);
         Route::get('/students/{id}', [AdminController::class, 'showStudent']);
         Route::get('/schools/{id}/leaderboard', [AdminController::class, 'getLeaderboard']);
+        // Estudiantes e Imágenes
+        Route::get('/students', [AdminController::class, 'getStudents']);
+        Route::post('/students', [AdminController::class, 'storeStudent']);
+        Route::get('/students/{id}', [AdminController::class, 'showStudent']);
+        Route::put('/students/{id}', [AdminController::class, 'updateStudent']);
+        Route::delete('/students/{id}', [AdminController::class, 'destroyStudent']);
+        Route::post('/students/photos/bulk', [AdminController::class, 'bulkUploadPhotos']);
+
         Route::get('/reports/unclosed', [AdminController::class, 'getUnclosedAttendance']);
         Route::get('/director/stats', [AdminController::class, 'directorDashboardStats']);
     });

@@ -3,6 +3,30 @@
     <ion-content :fullscreen="true" class="bg-gray-100 font-sans">
       <div class="flex flex-col h-screen min-h-screen">
         
+        <!-- Emergency Mode Overlay -->
+        <div v-if="emergencyMode" class="fixed inset-0 bg-gray-900 border-8 border-red-600 z-[100] flex flex-col items-center justify-center text-center p-8">
+          <ion-icon :icon="warning" class="text-8xl text-red-500 mb-6 animate-pulse"></ion-icon>
+          <h1 class="text-4xl lg:text-5xl font-black text-white mb-4 uppercase tracking-widest text-shadow-lg">Reloj Desincronizado</h1>
+          <p class="text-xl lg:text-2xl text-gray-300 font-bold max-w-3xl leading-relaxed mb-12">
+            La fecha actual del Kiosco es incorrecta. <br/>
+            Por favor, solicite al Administrador que escanee el <br/>
+            <span class="text-white bg-red-600/30 border border-red-500/50 px-3 py-1 rounded-xl mx-2">Código QR de Sincronización</span>
+            desde su panel.
+          </p>
+          
+          <input 
+            id="emergency-scan-input"
+            v-model="scanValue"
+            @keyup.enter="handleScan"
+            @blur="handleBlur"
+            class="opacity-0 absolute"
+            autofocus
+          />
+          <div class="animate-bounce mt-4">
+            <ion-icon :icon="barcodeOutline" class="text-6xl text-white opacity-50"></ion-icon>
+          </div>
+        </div>
+
         <!-- Header -->
         <header class="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center shrink-0 shadow-sm z-10">
           <div class="flex items-center gap-3">
@@ -68,6 +92,16 @@
               </span>
             </div>
             
+            <!-- Error Banner (non-blocking) -->
+            <div v-else-if="scanError" class="bg-red-100 border border-red-200 text-red-700 p-3 lg:p-4 flex items-center justify-center gap-2 lg:gap-3 mb-4 lg:mb-10 w-full animate-tada shrink-0 rounded-2xl">
+              <div class="rounded-full w-5 h-5 lg:w-6 lg:h-6 flex items-center justify-center bg-red-600 text-white">
+                <ion-icon :icon="alertCircleOutline" class="text-xs lg:text-sm"></ion-icon>
+              </div>
+              <span class="font-black text-lg lg:text-xl tracking-wider uppercase">
+                {{ scanError }}
+              </span>
+            </div>
+            
             <div v-else class="bg-blue-50/50 rounded-2xl p-3 lg:p-4 flex items-center justify-center gap-2 lg:gap-3 mb-4 lg:mb-10 w-full border border-blue-100/50 shrink-0">
                <span class="text-brand-blue font-black text-lg lg:text-xl tracking-widest uppercase">Esperando Escaneo...</span>
             </div>
@@ -110,37 +144,48 @@
 
           </div>
 
-          <!-- Right Column: History & Summary -->
-          <div class="w-full lg:w-[35%] xl:w-[30%] flex flex-col gap-6">
+          <!-- Columna Derecha: Historial y Resumen -->
+          <div class="w-full lg:w-[35%] xl:w-[30%] flex flex-col gap-6 lg:h-full lg:max-h-full lg:overflow-hidden lg:min-h-0">
             
-            <!-- History Section -->
-            <div class="flex-grow flex flex-col">
-              <div class="flex items-center justify-between mb-4 px-2">
+            <!-- Sección Historial -->
+            <div class="flex-grow flex flex-col min-h-0">
+              <div class="flex items-center justify-between mb-4 px-2 shrink-0">
                 <div class="flex items-center gap-2">
                   <ion-icon :icon="timeOutline" class="text-xl text-brand-blue"></ion-icon>
                   <h3 class="text-lg font-bold text-gray-900">Historial Reciente</h3>
                 </div>
-                <span class="bg-gray-200 text-gray-600 text-xs px-3 py-1 rounded-full font-semibold">Hoy</span>
+                <span class="bg-gray-100 text-gray-500 text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-widest border border-gray-200">Hoy</span>
               </div>
 
-              <!-- Scrollable List -->
-              <div class="flex-grow overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+              <!-- Lista con scroll -->
+              <div class="flex-grow overflow-y-auto space-y-3 pr-2 custom-scrollbar min-h-0">
                 
-                <div v-if="historyLoading" class="p-8 text-center text-gray-400 font-bold uppercase tracking-widest text-xs">Cargando Historial...</div>
-                <div v-else-if="recentHistory.length === 0" class="p-8 text-center text-gray-400 font-bold uppercase tracking-widest text-xs">Sin actividad reciente</div>
+                <div v-if="historyLoading" class="h-full flex items-center justify-center">
+                   <div class="w-8 h-8 border-4 border-gray-100 border-t-brand-blue rounded-full animate-spin"></div>
+                </div>
+                <div v-else-if="recentHistory.length === 0" class="h-full flex flex-col items-center justify-center opacity-30 gap-3 grayscale">
+                   <ion-icon :icon="timeOutline" class="text-5xl"></ion-icon>
+                   <p class="text-xs font-bold uppercase tracking-widest text-gray-400">Sin actividad hoy</p>
+                </div>
 
                 <div v-for="(item, idx) in recentHistory" :key="idx" 
-                  class="bg-white p-4 rounded-xl shadow-sm border-l-4 flex items-center gap-4 transition-transform hover:-translate-y-0.5 relative overflow-hidden"
+                  class="bg-white p-4 rounded-xl shadow-sm border-l-4 flex items-center gap-4 transition-transform hover:-translate-y-0.5 relative overflow-hidden group"
                   :class="item.type === 'Entrada' ? 'border-green-500' : 'border-orange-500'"
                 >
-                  <div class="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-white to-transparent pointer-events-none"></div>
-                  <div class="w-12 h-12 rounded-full bg-gray-100 overflow-hidden shrink-0 flex items-center justify-center text-brand-blue font-black border border-gray-100">
+                  <div class="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-white to-transparent pointer-events-none group-hover:from-blue-50/20 transition-all"></div>
+                  <div class="w-12 h-12 rounded-full bg-gray-100 overflow-hidden shrink-0 flex items-center justify-center text-brand-blue font-black border border-gray-100 relative shadow-inner">
                      <img v-if="item.photo_url" :src="item.photo_url" :alt="item.first_name" class="w-full h-full object-cover">
-                     <span v-else>{{ item.first_name[0] }}{{ item.last_name[0] }}</span>
+                     <ion-icon v-else :icon="personCircleOutline" class="text-2xl text-gray-300"></ion-icon>
+                     
+                     <div class="absolute -bottom-1 -right-1 w-5 h-5 rounded-lg flex items-center justify-center text-[10px] shadow-sm transform rotate-3"
+                        :class="item.type === 'Entrada' ? 'bg-green-500 text-white' : 'bg-orange-500 text-white'"
+                      >
+                        <ion-icon :icon="item.type === 'Entrada' ? arrowDown : arrowUp"></ion-icon>
+                      </div>
                   </div>
                   <div class="flex-grow min-w-0">
-                    <h4 class="text-sm font-bold text-gray-900 truncate">{{ item.first_name }} {{ item.last_name }}</h4>
-                    <p class="text-xs text-gray-500 truncate">{{ item.grade }}º {{ item.group_letter }} • ID: {{ item.enrollment_code }}</p>
+                    <h4 class="text-sm font-black text-gray-900 truncate tracking-tight uppercase">{{ item.first_name }} {{ item.last_name }}</h4>
+                    <p class="text-[10px] font-bold text-gray-400 truncate tracking-widest">{{ item.grade }}º {{ item.group_letter }} • ID: {{ item.enrollment_code }}</p>
                   </div>
                   <div class="text-right shrink-0">
                     <p class="text-sm font-black text-gray-900">{{ item.time }}</p>
@@ -153,21 +198,25 @@
 
             <!-- Daily Summary Card -->
             <div class="bg-blue-50/70 border border-blue-100 p-5 rounded-2xl shrink-0 shadow-sm mt-auto">
-              <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Resumen Diario</h3>
+              <div class="flex items-center justify-between mb-4">
+                 <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest">Resumen del Día</h3>
+                 <ion-icon :icon="pieChartOutline" class="text-brand-blue/30 text-xl"></ion-icon>
+              </div>
+              
               <div class="flex items-end justify-between">
                 <div>
                    <div class="flex items-baseline gap-1 break-words">
                       <span class="text-3xl font-black text-brand-blue leading-none">{{ dailyStats.total }}</span>
-                      <span class="text-sm font-semibold text-gray-500">Escaneos</span>
+                      <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Escaneos</span>
                    </div>
                 </div>
                 <div class="flex gap-4">
                   <div class="text-center">
-                    <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-0.5">Entradas</p>
+                    <p class="text-[9px] text-gray-400 uppercase font-black tracking-widest mb-0.5">Entradas</p>
                     <p class="text-lg font-black text-green-600 leading-none">{{ dailyStats.entries }}</p>
                   </div>
                   <div class="text-center">
-                    <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-0.5">Salidas</p>
+                    <p class="text-[9px] text-gray-400 uppercase font-black tracking-widest mb-0.5">Salidas</p>
                     <p class="text-lg font-black text-orange-500 leading-none">{{ dailyStats.exits }}</p>
                   </div>
                 </div>
@@ -209,7 +258,10 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { IonPage, IonContent, IonIcon } from '@ionic/vue';
-import { school, checkmark, idCard, timeOutline, alertCircleOutline } from 'ionicons/icons';
+import { 
+  school, checkmark, idCard, timeOutline, alertCircleOutline, 
+  pieChartOutline, arrowDown, arrowUp, personCircleOutline, warning, barcodeOutline
+} from 'ionicons/icons';
 import { storage } from '@/services/storage';
 import { db } from '@/services/db';
 import { SyncService } from '@/services/SyncService';
@@ -240,9 +292,20 @@ const recentHistory = ref<any[]>([]);
 const isSyncing = ref(false);
 const syncError = ref(false);
 const historyLoading = ref(true);
+const scanError = ref<string | null>(null);
 const currentScanType = ref<'in' | 'out'>('in');
-const currentTime = ref(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-const currentDate = ref(new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
+
+// Inicializamos en placeholders, se recarga en onMounted
+const currentTime = ref('--:--');
+const currentDate = ref('Cargando...');
+const lastLocalDate = ref('');
+
+const emergencyMode = ref(false);
+const timeOffsetMs = ref(0);
+
+const getLocalTime = () => {
+  return new Date(Date.now() + timeOffsetMs.value);
+};
 
 let watchdogInterval: any;
 
@@ -262,14 +325,41 @@ const ensureFocus = (e?: Event) => {
   if (el) (el as HTMLInputElement).focus();
 };
 
+const recalculateLocalStats = async () => {
+  const now = getLocalTime();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfTodayISO = todayStart.toISOString();
+  
+  const logs = await db.attendanceLogs
+    .where('scanned_at')
+    .aboveOrEqual(startOfTodayISO)
+    .toArray();
+    
+  const entries = logs.filter(l => l.type === 'in').length;
+  const exits = logs.filter(l => l.type === 'out').length;
+  
+  dailyStats.value = {
+    entries: entries,
+    exits: exits,
+    total: entries + exits
+  };
+};
+
 const fetchStats = async () => {
   try {
-    const res = await api.get('/sync/monitor/stats');
+    const now = getLocalTime();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfTodayISO = todayStart.toISOString();
+
+    const res = await api.get('/sync/monitor/stats', {
+      params: { local_start: startOfTodayISO }
+    });
     if (res.data.success) {
       dailyStats.value = res.data.data;
     }
   } catch (error) {
-    console.error('Error fetching monitor stats:', error);
+    console.warn('Error al obtener estadísticas del servidor, recalculando locales...');
+    await recalculateLocalStats();
   }
 };
 
@@ -290,31 +380,71 @@ let timeInterval: any;
 let syncInterval: any;
 
 const updateClock = () => {
-  currentTime.value = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  currentDate.value = new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const now = getLocalTime();
+  currentTime.value = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  currentDate.value = now.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  
+  // Detectar cambio de día (medianoche)
+  if (now.toDateString() !== lastLocalDate.value) {
+    console.log('🌙 Cambio de día detectado (Medianoche). Reiniciando historial local...');
+    lastLocalDate.value = now.toDateString();
+    recentHistory.value = [];
+    dailyStats.value = { entries: 0, exits: 0, total: 0 };
+    fetchStats(); // Forzar actualización de estadísticas desde el servidor
+  }
 };
 
 const handleScan = async () => {
-  if (!scanValue.value) return;
-  
-  const matricula = scanValue.value.trim().toUpperCase();
+  let rawVal = scanValue.value.trim();
   scanValue.value = '';
+  if (!rawVal) return;
+
+  // Interceptar Token de Sincronización de Tiempo
+  if (rawVal.length > 50) {
+    try {
+      const decoded = atob(rawVal);
+      if (decoded.includes('"type":"SYNC_TIME"')) {
+        const payload = JSON.parse(decoded);
+        if (payload.type === 'SYNC_TIME' && payload.timestamp) {
+          const offset = (payload.timestamp * 1000) - Date.now();
+          timeOffsetMs.value = offset;
+          await storage.set('kiosk_time_offset', offset);
+          emergencyMode.value = false;
+          
+          scanError.value = '¡Hora Sincronizada!';
+          updateClock(); // Update labels
+          setTimeout(() => { scanError.value = null; }, 3000);
+          
+          // Opcional: reportar al servidor
+          api.post('/sync/monitor/apply-time-offset', {
+            token: rawVal,
+            kiosk_local_timestamp: Math.floor(Date.now() / 1000)
+          }).catch(() => {});
+          
+          return;
+        }
+      }
+    } catch(e) { /* ignores invalid base64 */ }
+  }
+
+  if (emergencyMode.value) {
+    return;
+  }
+
+  const matricula = rawVal.toUpperCase();
 
   // 1. Buscar alumno en la base de datos local (Dexie)
   const student = await db.students.get({ enrollment_code: matricula });
 
-  if (student) {
-    const today = new Date().toISOString().split('T')[0];
-    
-    // Detectar cambio de día (si el monitor lleva abierto mucho tiempo)
-    if (recentHistory.value.length > 0) {
-      // Usamos el primer elemento del historial para comparar fechas
-      const firstItem = recentHistory.value[0];
-      // Nota: Aquí asumimos que recentHistory se cargó solo con datos de hoy
-      // Pero para ser extra seguros, si la fecha actual es distinta, limpiamos
-      // El toggle de abajo se encargará de poner el primer registro como 'in'
-    }
+  // Limpiar errores previos
+  scanError.value = null;
 
+  if (student) {
+    const now = getLocalTime();
+    // Obtener inicio del día local en formato ISO para filtrado preciso
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const localTodayISO = todayStart.toISOString().split('T')[0];
+    
     currentStudent.value = student;
     
     // 2. Determinar si es Entrada o Salida (Lógica Toggle Inteligente)
@@ -331,23 +461,20 @@ const handleScan = async () => {
     if (lastLog) {
       const lastDate = lastLog.scanned_at.split('T')[0];
       const lastTime = new Date(lastLog.scanned_at).getTime();
-      const nowTime = new Date().getTime();
+      const nowTime = getLocalTime().getTime();
       
-      // Si el escaneo es hace menos de 10 segundos para el mismo alumno, ignorar
+      // Si el escaneo es hace menos de 10 segundos para el mismo alumno, ignorar (feedback visual)
       if (nowTime - lastTime < 10000) {
         console.warn('Escaneo duplicado detectado para:', student.enrollment_code);
-        alert('Escaneo duplicado detectado. Por favor espera 10 segundos.');
+        scanError.value = 'Escaneo Duplicado';
+        currentStudent.value = null;
+        setTimeout(() => { scanError.value = null; }, 3000);
         return;
       }
 
-      if (lastDate === today) {
+      if (lastDate === localTodayISO) {
         // Si ya hay registros hoy, alternamos
         type = lastLog.type === 'in' ? 'out' : 'in';
-      } else {
-        // Cambio detectado en el primer escaneo del alumno hoy
-        // Limpiamos historial si detectamos que el último log general no es de hoy
-        recentHistory.value = [];
-        fetchStats();
       }
     }
 
@@ -356,7 +483,7 @@ const handleScan = async () => {
     // 3. Registrar asistencia localmente
     const newLog = {
       student_id: student.id,
-      scanned_at: new Date().toISOString(),
+      scanned_at: getLocalTime().toISOString(),
       type: type,
       sync_status: 'pending' as const
     };
@@ -366,13 +493,14 @@ const handleScan = async () => {
     // 4. Actualizar historial visual
     recentHistory.value.unshift({
       ...student,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      time: getLocalTime().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       type: type === 'in' ? 'Entrada' : 'Salida'
     });
     
-    if (recentHistory.value.length > 5) recentHistory.value.pop();
+    if (recentHistory.value.length > 10) recentHistory.value.pop();
 
-    // 5. Intentar sincronización rápida
+    // 5. Intentar sincronización rápida y actualizar estadísticas locales inmediatamente
+    recalculateLocalStats();
     SyncService.pushAttendance();
     
     // Reset visual despues de 5s
@@ -380,7 +508,10 @@ const handleScan = async () => {
        if (currentStudent.value?.id === student.id) currentStudent.value = null;
     }, 5000);
   } else {
-    alert('Matrícula no encontrada localmente.');
+    // Matrícula no encontrada (No bloqueante)
+    scanError.value = 'ID No Encontrado';
+    currentStudent.value = null;
+    setTimeout(() => { scanError.value = null; }, 3000);
   }
 };
 
@@ -404,6 +535,17 @@ onMounted(async () => {
     return;
   }
 
+  // Load saved offset if any
+  const savedOffset = await storage.get('kiosk_time_offset');
+  if (savedOffset) {
+    timeOffsetMs.value = Number(savedOffset);
+  }
+
+  // Si la hora corregida (o la del sistema) es menor a 2025, el reloj está mal
+  if (getLocalTime().getFullYear() < 2025) {
+    emergencyMode.value = true;
+  }
+
   // Cargar datos de la escuela y kiosco desde el servidor
   fetchSchoolInfo();
 
@@ -421,7 +563,8 @@ onMounted(async () => {
     }
   }
 
-  // Inicializar reloj
+  // Inicializar reloj con estado real
+  updateClock();
   timeInterval = setInterval(updateClock, 1000);
   
   // Sincronización automática cada 1 minuto
@@ -429,14 +572,21 @@ onMounted(async () => {
   syncInterval = setInterval(runSync, 60000);
 
   // Cargar historial reciente de la BD local (SOLO DE HOY)
-  const today = new Date().toISOString().split('T')[0];
+  // Usar el inicio del día local convertido a ISO para evitar desfases de zona horaria (UTC)
+  const startOfToday = getLocalTime();
+  startOfToday.setHours(0, 0, 0, 0);
+  const startOfTodayISO = startOfToday.toISOString();
+  
   const logs = await db.attendanceLogs
     .where('scanned_at')
-    .above(today)
+    .aboveOrEqual(startOfTodayISO)
     .reverse()
     .limit(10)
     .toArray();
 
+  // Cargar historial y estadísticas
+  await recalculateLocalStats();
+  
   for (const log of logs) {
     const s = await db.students.get(log.student_id);
     if (s) {

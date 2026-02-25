@@ -16,7 +16,16 @@ class AttendanceSyncController extends Controller
     public function getKioskStats(Request $request)
     {
         $schoolId = $request->user()->school_id;
-        $today = now()->startOfDay();
+
+        // Si el monitor envía su inicio de día local (ISO), lo usamos para filtrar exactamente lo mismo
+        $localStart = $request->query('local_start');
+
+        if ($localStart) {
+            $today = \Illuminate\Support\Carbon::parse($localStart)->toDateTimeString();
+        } else {
+            // Fallback: inicio del día según servidor
+            $today = now()->startOfDay();
+        }
 
         $entries = AttendanceLog::where('school_id', $schoolId)
             ->where('scanned_at', '>=', $today)

@@ -107,4 +107,94 @@ class KioskSetupController extends Controller
             ]
         ], 200);
     }
+
+    /**
+     * Generates a short-lived signed token with the server's current timestamp
+     * Needs to be called by an authenticated admin/director.
+     */
+    public function getTimeSyncToken(Request $request)
+    {
+        $payload = [
+            'type' => 'SYNC_TIME',
+            'timestamp' => now()->timestamp,
+            'exp' => now()->addMinutes(15)->timestamp, // QR code expires in 15 mins
+            'school_id' => $request->user()->school_id,
+        ];
+
+        // Add a simple signature so offline devices can do basic validation
+        $payload['sig'] = hash('sha256', $payload['timestamp'] . 'miEscuelaOfflineSecret');
+
+        // Encode as base64 so the offline frontend can decode it easily
+        $token = base64_encode(json_encode($payload));
+
+        return response()->json([
+            'success' => true,
+            'token' => $token,
+            'expires_at' => $payload['exp']
+        ]);
+    }
+
+    /**
+     * Receives the signed token, calculates the offset and saves it.
+     * Called by the Kiosk.
+     */
+    public function applyTimeOffset(Request $request)
+    {
+        $request->validate([
+            'token' => 'required|string',
+            'kiosk_local_timestamp' => 'required|numeric' // Timestamp from the kiosk when scanning
+        ]);
+
+        try {
+            $payloadStr = base64_decode($request->token);
+            $payload = json_decode($payloadStr, true);
+
+            if (!isset($payload['timestamp']) || !isset($payload['exp'])) {
+                throw new \Exception("Invalid token format");
+            }
+
+            if (now()->timestamp > $payload['exp']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El código QR ha expirado. Por favor, genere uno nuevo.'
+                ], 400);
+            }
+
+            // The user must be authenticated via Sanctum to their specific Kiosk
+            $kioskToken = \Laravel\Sanctum\PersonalAccessToken::findToken($request->bearerToken());
+            if (!$kioskToken) {
+                return response()->json(['success' => false, 'message' => 'No autorizado'], 401);
+            }
+
+            $kiosk = \App\Models\Kiosk::find($kioskToken->tokenable_id);
+            if (!$kiosk) {
+                return response()->json(['success' => false, 'message' => 'Kiosco no encontrado'], 404);
+            }
+
+            // Optional: verify that the token belongs to the same school
+            if (isset($payload['school_id']) && $kiosk->school_id !== $payload['school_id']) {
+                return response()->json(['success' => false, 'message' => 'Escuela no coincide'], 403);
+            }
+
+            // Calculate offset: offset is how many seconds to ADD to the Kiosk's local time to get the Server's time.
+            // Server Time: $payload['timestamp']
+            // Kiosk Local Time: $request->kiosk_local_timestamp
+            $offsetSeconds = (int)$payload['timestamp'] - (int)$request->kiosk_local_timestamp;
+
+            $kiosk->update([
+                'time_offset_seconds' => $offsetSeconds
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'offset_seconds' => $offsetSeconds,
+                'message' => 'Sincronización de hora exitosa.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al aplicar sincronización de hora: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

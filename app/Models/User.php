@@ -26,7 +26,8 @@ class User extends Authenticatable
         'google_id',
         'school_id',
         'profile_photo_path',
-        'avatar_url'
+        'avatar_url',
+        'is_active'
     ];
 
     /**
@@ -55,5 +56,13 @@ class User extends Authenticatable
     public function school(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(School::class);
+    }
+
+    /**
+     * Get the groups assigned to this user (if role is teacher).
+     */
+    public function teacherGroups(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(TeacherGroupAssignment::class);
     }
 }

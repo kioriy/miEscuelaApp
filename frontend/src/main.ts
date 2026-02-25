@@ -45,7 +45,9 @@ const app = createApp(App)
   })
   .use(router);
 
-router.isReady().then(async () => {
-  await initStorage();
-  app.mount('#app');
+// Asegurarse de que el storage esté listo antes de montar la app y que el router procese la navegación inicial
+initStorage().then(() => {
+  router.isReady().then(() => {
+    app.mount('#app');
+  });
 });
