@@ -50,28 +50,6 @@
         <!-- Form Card -->
         <div class="bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden mb-6 p-8">
           
-          <!-- Top: Profile Pic Upload -->
-          <div class="flex items-center gap-5 mb-8">
-            <div class="w-20 h-20 rounded-2xl bg-blue-50/50 border border-dashed border-blue-200 flex items-center justify-center text-blue-400 cursor-pointer hover:bg-blue-50 transition-colors relative overflow-hidden group">
-              <input type="file" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" @change="onPhotoChange" />
-              <div v-if="photoPreview" class="absolute inset-0 w-full h-full">
-                <img :src="photoPreview" class="w-full h-full object-cover rounded-2xl" />
-              </div>
-              <div v-else class="flex items-center justify-center w-full h-full">
-                <svg class="w-8 h-8 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-              </div>
-              <div class="absolute inset-0 bg-black/40 items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hidden md:flex">
-                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-              </div>
-            </div>
-            <div>
-              <h3 class="text-lg font-bold text-gray-900 leading-tight">Foto de Perfil</h3>
-              <p class="text-sm text-gray-500 font-medium mt-1">Opcional. Formatos aceptados: JPG, PNG.</p>
-            </div>
-          </div>
-
-          <hr class="border-gray-50 mb-8" />
-
           <!-- Form Grid -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
              
@@ -97,23 +75,44 @@
              </div>
 
              <!-- Row 2 -->
-             <div>
-                <label class="block text-sm font-bold text-gray-900 mb-2">Escuela Asignada</label>
-                <div class="relative">
+             <div class="md:col-span-2">
+                <label class="block text-sm font-bold text-gray-900 mb-2">Escuelas Asignadas</label>
+                <div class="relative mb-4">
                   <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10.496 2.132a1 1 0 00-.992 0l-7 4A1 1 0 003 8v7a1 1 0 100 2h14a1 1 0 100-2V8a1 1 0 00.496-1.868l-7-4zM6 9a1 1 0 00-1 1v3a1 1 0 102 0v-3a1 1 0 00-1-1zm3 1a1 1 0 012 0v3a1 1 0 11-2 0v-3zm5-1a1 1 0 00-1 1v3a1 1 0 102 0v-3a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                   </div>
-                  <select v-model="form.school_id" class="w-full pl-11 pr-10 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all text-gray-700 bg-white appearance-none cursor-pointer">
-                    <option value="" disabled>Seleccione una escuela</option>
-                    <option v-for="school in schools" :key="school.id" :value="school.id">{{ school.name }}</option>
+                  <select v-model="selectedSchoolToAdd" @change="addSchool" class="w-full pl-11 pr-10 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all text-gray-700 bg-white appearance-none cursor-pointer">
+                    <option value="" disabled>Buscar y seleccionar escuela ({{ schools.length }}+ registradas)...</option>
+                    <option v-for="school in availableSchools" :key="school.id" :value="school.id">{{ school.name }}</option>
                   </select>
                   <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
                     <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                   </div>
                 </div>
+
+                <div class="flex flex-col sm:flex-row flex-wrap gap-3 p-4 border border-dashed border-gray-200 rounded-xl bg-gray-50/50">
+                  <div v-for="id in form.school_ids" :key="id" class="flex items-center gap-3 bg-white border border-gray-200 px-4 py-3 rounded-xl shadow-sm min-w-[200px] justify-between">
+                    <div>
+                       <p class="text-[13px] font-bold text-gray-900 leading-tight">{{ getSchoolName(id) }}</p>
+                    </div>
+                    <button type="button" @click="removeSchool(id)" class="text-gray-400 hover:text-red-500 transition-colors p-1">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                  </div>
+                  <div v-if="form.school_ids.length > 0" class="flex items-center justify-center bg-gray-50/50 border border-dashed border-gray-200 px-4 py-3 rounded-xl min-w-[200px]">
+                     <p class="text-[13px] text-gray-500 font-medium italic">Escuelas asignadas: {{ form.school_ids.length }}</p>
+                  </div>
+                  <div v-if="form.school_ids.length === 0" class="text-sm text-gray-400 font-medium w-full text-center py-2">
+                    No hay escuelas asignadas
+                  </div>
+                </div>
+                <div class="mt-3 flex items-start gap-2 text-gray-500">
+                  <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                  <p class="text-[13px] font-medium leading-tight">El usuario podrá gestionar todas las instituciones que aparezcan en esta lista.</p>
+                </div>
              </div>
 
-             <div>
+             <div class="md:col-span-2">
                 <label class="block text-sm font-bold text-gray-900 mb-2">Rol del Sistema</label>
                 <div class="relative">
                   <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -212,30 +211,34 @@ const isEditMode = computed(() => {
 const form = ref({
   name: '',
   email: '',
-  school_id: '',
-  role: '',
-  photo_base64: ''
+  school_ids: [] as number[],
+  role: ''
 });
 
-const photoPreview = ref<string | null>(null);
 
-const onPhotoChange = (event: any) => {
-  const file = event.target.files[0];
-  if (file) {
-    if (file.size > 5 * 1024 * 1024) {
-      alert('La imagen no debe superar los 5MB');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      photoPreview.value = e.target?.result as string;
-      form.value.photo_base64 = photoPreview.value;
-    };
-    reader.readAsDataURL(file);
+const schools = ref<any[]>([]);
+
+const selectedSchoolToAdd = ref<number | ''>('');
+
+const availableSchools = computed(() => {
+  return schools.value.filter(s => !form.value.school_ids.includes(s.id));
+});
+
+const addSchool = () => {
+  if (selectedSchoolToAdd.value !== '' && !form.value.school_ids.includes(selectedSchoolToAdd.value as number)) {
+    form.value.school_ids.push(selectedSchoolToAdd.value as number);
+    selectedSchoolToAdd.value = '';
   }
 };
 
-const schools = ref<any[]>([]);
+const removeSchool = (id: number) => {
+  form.value.school_ids = form.value.school_ids.filter(sid => sid !== id);
+};
+
+const getSchoolName = (id: number) => {
+  const school = schools.value.find(s => s.id === id);
+  return school ? school.name : '';
+};
 
 const fetchSchools = async () => {
   try {
@@ -310,10 +313,7 @@ const loadUserData = async () => {
       form.value.name = data.name;
       form.value.email = data.email;
       form.value.role = data.role;
-      form.value.school_id = data.school_id || '';
-      if (data.profile_photo_path) {
-          photoPreview.value = `http://127.0.0.1:8000/storage/${data.profile_photo_path}`;
-      }
+      form.value.school_ids = data.schools ? data.schools.map((s: any) => s.id) : (data.school_id ? [data.school_id] : []);
     }
   } catch (error) {
     console.error('Error cargando los datos del usuario', error);

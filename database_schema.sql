@@ -12,6 +12,8 @@ CREATE TABLE `schools` (
     `timezone` VARCHAR(50) DEFAULT 'America/Mexico_City',
     `allowed_kiosks` INT DEFAULT 1, -- Límite de kioscos por plan de pago
     `is_active` BOOLEAN DEFAULT 1,
+    `entry_time` TIME NULL,
+    `tolerance_minutes` INT NULL DEFAULT 15,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
@@ -69,7 +71,8 @@ CREATE TABLE `students` (
 
     FOREIGN KEY (`school_id`) REFERENCES `schools`(`id`) ON DELETE CASCADE,
     
-    -- Índices para rendimiento
+    -- Índices para rendimiento e Integridad
+    UNIQUE KEY `unique_student_school_enrollment` (`school_id`, `enrollment_code`),
     INDEX `idx_school_sync` (`school_id`, `updated_at`),
     INDEX `idx_academic_filter` (`school_id`, `school_level`, `grade`, `group_letter`),
     INDEX `idx_parents_search` (`tutor_email`,`secondary_tutor_email` )

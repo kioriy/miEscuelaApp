@@ -59,6 +59,27 @@ class User extends Authenticatable
     }
 
     /**
+     * Many-to-Many relationship with schools.
+     */
+    public function schools(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(School::class)
+            ->withPivot('role')
+            ->withTimestamps();
+    }
+
+    /**
+     * Helper to check if the user has access to a specific school.
+     */
+    public function hasAccessToSchool($schoolId): bool
+    {
+        if ($this->role === 'super_admin') {
+            return true;
+        }
+        return $this->schools->contains('id', $schoolId);
+    }
+
+    /**
      * Get the groups assigned to this user (if role is teacher).
      */
     public function teacherGroups(): \Illuminate\Database\Eloquent\Relations\HasMany

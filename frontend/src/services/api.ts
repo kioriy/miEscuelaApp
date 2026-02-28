@@ -18,6 +18,13 @@ api.interceptors.request.use(
         if (val) {
             config.headers.Authorization = `Bearer ${val}`;
         }
+
+        // Inyectar el ID de la escuela actual para filtrado en el backend
+        const schoolId = await storage.get('current_school_id');
+        if (schoolId) {
+            config.headers['X-School-Id'] = schoolId;
+        }
+
         return config;
     },
     (error) => Promise.reject(error)

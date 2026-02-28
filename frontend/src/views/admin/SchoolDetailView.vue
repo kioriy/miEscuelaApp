@@ -188,10 +188,10 @@
           </div>
 
           <!-- Kiosks Section -->
-          <div v-if="school.kiosks && school.kiosks.length > 0" class="bg-white rounded-[24px] shadow-sm border border-gray-100 p-6">
+          <div v-if="school.owned_kiosks && school.owned_kiosks.length > 0" class="bg-white rounded-[24px] shadow-sm border border-gray-100 p-6">
             <h3 class="text-[13px] font-black text-gray-400 uppercase tracking-widest mb-5">Kioscos Autorizados</h3>
             <div class="flex flex-wrap gap-2">
-              <span v-for="kiosk in school.kiosks" :key="kiosk.id" class="inline-flex items-center gap-2 py-2 px-4 rounded-xl bg-gray-50 border border-gray-200 text-sm font-bold text-gray-700">
+              <span v-for="kiosk in school.owned_kiosks" :key="kiosk.id" class="inline-flex items-center gap-2 py-2 px-4 rounded-xl bg-gray-50 border border-gray-200 text-sm font-bold text-gray-700">
                 <div class="w-2 h-2 rounded-full" :class="kiosk.is_active ? 'bg-green-500' : 'bg-gray-300'"></div>
                 {{ kiosk.activation_code }}
               </span>

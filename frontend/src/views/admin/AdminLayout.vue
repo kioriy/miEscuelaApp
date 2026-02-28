@@ -47,6 +47,8 @@
             </button>
           </div>
 
+          <SchoolSwitcher />
+
           <!-- Navigation -->
           <nav class="flex-1 px-4 space-y-1 overflow-y-auto">
             <router-link to="/admin/dashboard" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/dashboard') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
@@ -146,6 +148,7 @@ import {
 } from 'ionicons/icons';
 import { useRouter } from 'vue-router';
 import { storage } from '@/services/storage';
+import SchoolSwitcher from '@/components/SchoolSwitcher.vue';
 
 const router = useRouter();
 

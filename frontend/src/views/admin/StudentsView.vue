@@ -10,9 +10,13 @@
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
           <div>
             <h1 class="text-[32px] font-black text-gray-900 tracking-tight leading-none mb-2">Administración de Estudiantes</h1>
-            <p class="text-gray-500 font-medium tracking-wide">Gestiona la matrícula, grupos y registros fotográficos.</p>
+            <p class="text-gray-500 font-medium tracking-wide mb-1.5">Gestiona la matrícula, grupos y registros fotográficos.</p>
+            <p v-if="activeSchoolName" class="text-[15px] font-black text-brand-blue flex items-center gap-1.5 mt-1"><ion-icon :icon="business"></ion-icon> {{ activeSchoolName }}</p>
           </div>
           <div class="flex items-center gap-3 shrink-0">
+            <button @click="fetchStudents()" class="bg-white border border-gray-200 text-gray-700 font-bold w-10 h-10 rounded-xl text-sm shadow-sm hover:bg-gray-50 flex items-center justify-center transition-all" title="Actualizar lista">
+              <ion-icon :icon="refreshOutline" class="text-lg"></ion-icon>
+            </button>
             <button @click="showBulkModal = true" class="bg-white border border-gray-200 text-brand-blue font-bold py-2.5 px-5 rounded-xl text-sm shadow-sm hover:bg-blue-50 flex items-center gap-2 transition-all">
               <ion-icon :icon="imagesOutline" class="text-lg"></ion-icon>
               Importar Fotos (ZIP)
@@ -29,28 +33,43 @@
           <div class="bg-white p-6 rounded-[24px] shadow-sm border border-gray-100 transition-transform hover:-translate-y-1">
             <h3 class="text-[12px] font-black text-gray-400 uppercase tracking-widest mb-2">Matrícula Total</h3>
             <div class="flex items-baseline gap-2">
-              <span class="text-4xl font-black text-gray-900 tracking-tighter">{{ students.length }}</span>
+              <span class="text-4xl font-black text-gray-900 tracking-tighter">
+                <span v-if="loading">...</span>
+                <span v-else>{{ students.length }}</span>
+              </span>
               <span class="text-[11px] font-bold text-gray-400 uppercase">Alumnos</span>
             </div>
           </div>
           <div class="bg-white p-6 rounded-[24px] shadow-sm border border-gray-100 transition-transform hover:-translate-y-1">
             <h3 class="text-[12px] font-black text-gray-400 uppercase tracking-widest mb-2">Con Fotografía</h3>
             <div class="flex items-baseline gap-2">
-              <span class="text-4xl font-black text-emerald-600 tracking-tighter">{{ studentsWithPhoto }}</span>
-              <span class="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md uppercase tracking-tighter">{{ photoPercentage }}%</span>
+              <span class="text-4xl font-black text-emerald-600 tracking-tighter">
+                <span v-if="loading">...</span>
+                <span v-else>{{ studentsWithPhoto }}</span>
+              </span>
+              <span class="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md uppercase tracking-tighter">
+                <span v-if="loading">...</span>
+                <span v-else>{{ photoPercentage }}%</span>
+              </span>
             </div>
           </div>
           <div class="bg-white p-6 rounded-[24px] shadow-sm border border-gray-100 transition-transform hover:-translate-y-1">
             <h3 class="text-[12px] font-black text-gray-400 uppercase tracking-widest mb-2">Sin Fotografía</h3>
             <div class="flex items-baseline gap-2">
-              <span class="text-4xl font-black text-orange-500 tracking-tighter">{{ students.length - studentsWithPhoto }}</span>
+              <span class="text-4xl font-black text-orange-500 tracking-tighter">
+                <span v-if="loading">...</span>
+                <span v-else>{{ students.length - studentsWithPhoto }}</span>
+              </span>
               <span class="text-[11px] font-bold text-orange-500 bg-orange-50 px-2 py-0.5 rounded-md uppercase tracking-tighter">Pendientes</span>
             </div>
           </div>
           <div class="bg-white p-6 rounded-[24px] shadow-sm border border-gray-100 transition-transform hover:-translate-y-1">
             <h3 class="text-[12px] font-black text-gray-400 uppercase tracking-widest mb-2">Grupos Activos</h3>
             <div class="flex items-baseline gap-2">
-              <span class="text-4xl font-black text-indigo-600 tracking-tighter">{{ uniqueGroups.length }}</span>
+              <span class="text-4xl font-black text-indigo-600 tracking-tighter">
+                <span v-if="loading">...</span>
+                <span v-else>{{ uniqueGroups.length }}</span>
+              </span>
               <span class="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md uppercase tracking-tighter">Secciones</span>
             </div>
           </div>
@@ -195,9 +214,10 @@ import { ref, computed, onMounted } from 'vue';
 import { IonPage, IonContent, IonRefresher, IonRefresherContent, alertController } from '@ionic/vue';
 import { 
   personAddOutline, searchOutline, chevronDown, filter,
-  createOutline, trashOutline, imagesOutline, eyeOutline
+  createOutline, trashOutline, imagesOutline, eyeOutline, business, refreshOutline
 } from 'ionicons/icons';
 import api from '@/services/api';
+import { storage } from '@/services/storage';
 import BulkPhotoUploadModal from './modals/BulkPhotoUploadModal.vue';
 
 const loading = ref(true);
@@ -206,6 +226,7 @@ const searchQuery = ref('');
 const filterGrade = ref('');
 const filterGroup = ref('');
 const showBulkModal = ref(false);
+const activeSchoolName = ref('');
 
 const fetchStudents = async () => {
   loading.value = true;
@@ -233,10 +254,10 @@ const uniqueGroups = computed(() => [...new Set(students.value.map(s => `${s.gra
 
 const filteredStudents = computed(() => {
   return students.value.filter(s => {
-    const nameMatch = `${s.first_name} ${s.last_name}`.toLowerCase().includes(searchQuery.value.toLowerCase());
-    const codeMatch = s.enrollment_code.toLowerCase().includes(searchQuery.value.toLowerCase());
-    const gradeMatch = !filterGrade.value || s.grade === filterGrade.value;
-    const groupMatch = !filterGroup.value || s.group_letter === filterGroup.value;
+    const nameMatch = `${s.first_name || ''} ${s.last_name || ''}`.toLowerCase().includes((searchQuery.value || '').toLowerCase());
+    const codeMatch = String(s.enrollment_code || '').toLowerCase().includes((searchQuery.value || '').toLowerCase());
+    const gradeMatch = !filterGrade.value || String(s.grade) === String(filterGrade.value);
+    const groupMatch = !filterGroup.value || String(s.group_letter) === String(filterGroup.value);
     return (nameMatch || codeMatch) && gradeMatch && groupMatch;
   });
 });
@@ -280,7 +301,15 @@ const confirmDelete = async (student: any) => {
   await alert.present();
 };
 
-onMounted(fetchStudents);
+onMounted(async () => {
+  const currentId = await storage.get('current_school_id');
+  const userSchools = await storage.get('user_schools');
+  if (currentId && userSchools) {
+    const active = userSchools.find((s: any) => s.id === currentId);
+    if (active) activeSchoolName.value = active.name;
+  }
+  fetchStudents();
+});
 </script>
 
 <style scoped>

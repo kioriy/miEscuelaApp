@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\AdminController;
 
 Route::post('/auth/parent/google', [ParentAuthController::class, 'loginWithGoogle']);
 Route::post('/setup/kiosk/activate', [KioskSetupController::class, 'activate']);
+Route::get('/setup/kiosk/schools', [KioskSetupController::class, 'getSchoolsForActivation']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/setup/kiosk/status', [KioskSetupController::class, 'getStatus']);

@@ -12,7 +12,8 @@
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
             <div>
               <h1 class="text-[32px] font-black text-gray-900 tracking-tight leading-none mb-2">Panel Administrativo</h1>
-              <p class="text-gray-500 font-medium tracking-wide">Gestión global del sistema miEscuelaApp</p>
+              <p class="text-gray-500 font-medium tracking-wide mb-2">Gestión global del sistema miEscuelaApp</p>
+              <p v-if="activeSchoolName" class="text-[15px] font-black text-brand-blue flex items-center gap-1.5 mt-1"><ion-icon :icon="business"></ion-icon> {{ activeSchoolName }}</p>
             </div>
           </div>
           
@@ -54,11 +55,15 @@
           <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
               <h1 class="text-4xl font-black text-gray-900 tracking-tight leading-none mb-3">Bienvenido, Director {{ directorLastName }}</h1>
-              <p class="text-gray-500 font-bold tracking-wide flex items-center gap-2">
+              <p class="text-gray-500 font-bold tracking-wide flex items-center gap-2 mb-2">
                 {{ formattedDate }} <span class="w-1.5 h-1.5 rounded-full bg-gray-300"></span> Resumen del día escolar
               </p>
+              <p v-if="activeSchoolName" class="text-[15px] font-black text-brand-blue flex items-center gap-1.5 mt-1"><ion-icon :icon="business"></ion-icon> {{ activeSchoolName }}</p>
             </div>
             <div class="flex items-center gap-3">
+              <button @click="fetchDashboardStats()" class="bg-white border border-gray-200 text-gray-700 font-bold w-12 h-12 rounded-xl text-lg shadow-sm hover:bg-gray-50 flex items-center justify-center transition-all" title="Actualizar datos">
+                <ion-icon :icon="refreshOutline"></ion-icon>
+              </button>
               <button class="bg-white text-gray-700 font-bold px-5 py-3 rounded-xl border border-gray-200 shadow-sm hover:bg-gray-50 transition-all flex items-center gap-2">
                 <ion-icon :icon="megaphoneOutline" class="text-xl"></ion-icon>
                 Difundir Mensaje
@@ -77,7 +82,10 @@
               <div class="flex justify-between items-start mb-4">
                 <div>
                   <p class="text-[13px] font-bold text-gray-400 tracking-wide mb-1">Matrícula Total</p>
-                  <h3 class="text-4xl font-black text-gray-900 tracking-tighter">{{ formatNumber(directorStats.totalStudents) }}</h3>
+                  <h3 class="text-4xl font-black text-gray-900 tracking-tighter">
+                    <span v-if="loading">...</span>
+                    <span v-else>{{ formatNumber(directorStats.totalStudents) }}</span>
+                  </h3>
                 </div>
                 <div class="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-brand-blue group-hover:scale-110 transition-transform">
                   <ion-icon :icon="peopleOutline" class="text-2xl"></ion-icon>
@@ -94,7 +102,10 @@
               <div class="flex justify-between items-start mb-4">
                 <div>
                   <p class="text-[13px] font-bold text-gray-400 tracking-wide mb-1">Asistencia Hoy</p>
-                  <h3 class="text-4xl font-black text-gray-900 tracking-tighter">{{ directorStats.attendanceRate }}%</h3>
+                  <h3 class="text-4xl font-black text-gray-900 tracking-tighter">
+                    <span v-if="loading">...</span>
+                    <span v-else>{{ directorStats.attendanceRate }}%</span>
+                  </h3>
                 </div>
                 <div class="w-14 h-14 bg-green-50 rounded-2xl flex items-center justify-center text-green-600">
                   <ion-icon :icon="checkmarkCircleOutline" class="text-2xl"></ion-icon>
@@ -111,7 +122,10 @@
               <div class="flex justify-between items-start mb-4">
                 <div>
                   <p class="text-[13px] font-bold text-gray-400 tracking-wide mb-1">Ausencias</p>
-                  <h3 class="text-4xl font-black text-gray-900 tracking-tighter">{{ directorStats.absentCount }}</h3>
+                  <h3 class="text-4xl font-black text-gray-900 tracking-tighter">
+                    <span v-if="loading">...</span>
+                    <span v-else>{{ directorStats.absentCount }}</span>
+                  </h3>
                 </div>
                 <div class="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-500">
                   <ion-icon :icon="banOutline" class="text-2xl"></ion-icon>
@@ -128,7 +142,10 @@
               <div class="flex justify-between items-start mb-4">
                 <div>
                   <p class="text-[13px] font-bold text-gray-400 tracking-wide mb-1">Salidas Pendientes</p>
-                  <h3 class="text-4xl font-black text-gray-900 tracking-tighter">{{ directorStats.unclosedCount }}</h3>
+                  <h3 class="text-4xl font-black text-gray-900 tracking-tighter">
+                    <span v-if="loading">...</span>
+                    <span v-else>{{ directorStats.unclosedCount }}</span>
+                  </h3>
                 </div>
                 <div class="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600 group-hover:rotate-12 transition-transform">
                   <ion-icon :icon="logOutOutline" class="text-2xl"></ion-icon>
@@ -144,7 +161,10 @@
               <div class="flex justify-between items-start mb-4">
                 <div>
                   <p class="text-[13px] font-bold text-gray-400 tracking-wide mb-1">Maestros</p>
-                  <h3 class="text-4xl font-black text-gray-900 tracking-tighter">{{ directorStats.staffPresent }}/{{ directorStats.totalStaff }}</h3>
+                  <h3 class="text-4xl font-black text-gray-900 tracking-tighter">
+                    <span v-if="loading">...</span>
+                    <span v-else>{{ directorStats.staffPresent }}/{{ directorStats.totalStaff }}</span>
+                  </h3>
                 </div>
                 <div class="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600">
                   <ion-icon :icon="personAddOutline" class="text-2xl"></ion-icon>
@@ -376,7 +396,7 @@ import { IonPage, IonContent, IonIcon, IonRefresher, IonRefresherContent } from 
 import { 
   trendingUpOutline, business, school, megaphoneOutline, documentTextOutline, peopleOutline, 
   checkmarkCircleOutline, banOutline, personAddOutline, ellipsisVerticalOutline, personOutline,
-  logOutOutline, closeOutline, timeOutline
+  logOutOutline, closeOutline, timeOutline, refreshOutline
 } from 'ionicons/icons';
 import api from '@/services/api';
 import { storage } from '@/services/storage';
@@ -384,6 +404,7 @@ import { storage } from '@/services/storage';
 const loading = ref(true);
 const isAdmin = ref(false);
 const schoolName = ref('');
+const activeSchoolName = ref('');
 const currentUser = ref<any>(null);
 
 const showUnclosedModal = ref(false);
@@ -499,6 +520,13 @@ onMounted(async () => {
     currentUser.value = user;
     isAdmin.value = user.role === 'super_admin';
     schoolName.value = user.school?.name || '';
+  }
+
+  const currentId = await storage.get('current_school_id');
+  const schools = await storage.get('user_schools');
+  if (currentId && schools) {
+    const active = schools.find((s: any) => s.id === currentId);
+    if (active) activeSchoolName.value = active.name;
   }
   
   fetchDashboardStats();

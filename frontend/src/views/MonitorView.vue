@@ -39,14 +39,22 @@
             </div>
           </div>
           
-          <div class="flex items-center gap-4 text-right">
-            <div>
-              <h2 class="text-sm font-bold text-gray-900 leading-tight">{{ schoolInfo.name }}</h2>
+            <div class="flex items-center gap-4 text-right">
+            <div class="flex flex-col items-end">
+              <h2 class="text-sm font-bold text-gray-900 leading-tight">
+                 <span v-if="schoolInfo.schools.length > 1">Múltiples Instituciones</span>
+                 <span v-else>{{ schoolInfo.schools[0]?.name || 'Colegio' }}</span>
+              </h2>
               <span class="text-[10px] text-brand-blue font-black tracking-widest uppercase">{{ schoolInfo.kioskName }}</span>
+              
             </div>
-            <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-brand-blue shadow-sm overflow-hidden border border-blue-100">
-              <img v-if="schoolInfo.logo" :src="schoolInfo.logo" alt="School Logo" class="w-full h-full object-contain p-1" />
-              <div v-else class="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 font-bold text-xs uppercase">Logo</div>
+            
+            <!-- School Logos (Stacked if Multiple) -->
+            <div class="flex -space-x-4">
+              <div v-for="(school, idx) in schoolInfo.schools" :key="idx" class="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-brand-blue shadow-md border-2 border-white overflow-hidden relative z-10" :style="{ zIndex: 10 - idx }">
+                <img v-if="school.logo_url" :src="school.logo_url" alt="Logo Escuela" class="w-full h-full object-contain p-1" />
+                <div v-else class="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 font-bold text-xs uppercase">{{ school.name.substring(0, 2) }}</div>
+              </div>
             </div>
           </div>
         </header>
@@ -278,8 +286,7 @@ const userProfile = ref({
 // Scan & Sync State
 const scanValue = ref('');
 const schoolInfo = ref({
-  name: 'Colegio',
-  logo: '',
+  schools: [] as any[],
   kioskName: 'Cargando...'
 });
 const dailyStats = ref({
@@ -299,6 +306,7 @@ const currentScanType = ref<'in' | 'out'>('in');
 const currentTime = ref('--:--');
 const currentDate = ref('Cargando...');
 const lastLocalDate = ref('');
+const isDirector = ref(false);
 
 const emergencyMode = ref(false);
 const timeOffsetMs = ref(0);
@@ -367,8 +375,8 @@ const fetchSchoolInfo = async () => {
   try {
     const res = await api.get('/sync/monitor/school');
     if (res.data.success) {
-      schoolInfo.value.name = res.data.data.name;
-      schoolInfo.value.logo = res.data.data.logo_url;
+      // The API now returns an array of schools
+      schoolInfo.value.schools = res.data.data.schools || [];
       schoolInfo.value.kioskName = res.data.data.kiosk_name;
     }
   } catch (error) {
@@ -529,16 +537,42 @@ const runSync = async () => {
 };
 
 onMounted(async () => {
+  const user = await storage.get('auth_user');
   const kioskConfig = await storage.get('kiosk_config');
+  const currentSchoolId = await storage.get('current_school_id');
+  
+  const directorRoles = ['director', 'super_admin'];
+  if (user && directorRoles.includes(user.role)) {
+    isDirector.value = true;
+  }
+
+  // 1. Sin Kiosco configurado en absoluto -> Activar
   if (!kioskConfig) {
     router.push('/monitor/activate');
     return;
+  }
+
+  // 2. Si el usuario navega desde el Admin Panel, validar que la sede seleccionada esté autorizada en este Kiosco.
+  if (isDirector.value && currentSchoolId && kioskConfig.schools) {
+    const isAuthorizedForCurrentSchool = kioskConfig.schools.some((s: any) => s.id === currentSchoolId);
+    if (!isAuthorizedForCurrentSchool) {
+      router.push('/monitor/activate');
+      return;
+    }
   }
 
   // Load saved offset if any
   const savedOffset = await storage.get('kiosk_time_offset');
   if (savedOffset) {
     timeOffsetMs.value = Number(savedOffset);
+  }
+
+  // FORCE FULL SYNC: Multi-School patch
+  const hasForcedMultiSync = await storage.get('multi_sync_forced_v1');
+  if (!hasForcedMultiSync) {
+    await storage.remove('last_students_sync');
+    await storage.set('multi_sync_forced_v1', true);
+    console.log('[System] Forced full sync for Multi-School architecture.');
   }
 
   // Si la hora corregida (o la del sistema) es menor a 2025, el reloj está mal
@@ -549,7 +583,7 @@ onMounted(async () => {
   // Cargar datos de la escuela y kiosco desde el servidor
   fetchSchoolInfo();
 
-  const user = await storage.get('auth_user');
+  // Cargar perfil del usuario si existe
   if (user) {
     userProfile.value.name = user.name || 'Usuario';
     userProfile.value.role = user.role || 'user';

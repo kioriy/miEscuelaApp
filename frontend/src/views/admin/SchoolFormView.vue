@@ -160,6 +160,31 @@
 
                 </div>
 
+                <!-- Time and Tolerance ROW -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
+                  <!-- Entry Time -->
+                  <div>
+                    <label class="block text-sm font-bold text-gray-800 mb-2">Hora de Entrada General</label>
+                    <div class="relative">
+                      <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                      </div>
+                      <input type="time" v-model="form.entry_time" class="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all text-gray-700 bg-white shadow-sm font-semibold">
+                    </div>
+                  </div>
+
+                  <!-- Tolerance Minutes -->
+                  <div>
+                    <label class="block text-sm font-bold text-gray-800 mb-2">Minutos de Tolerancia</label>
+                    <div class="relative">
+                      <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                      </div>
+                      <input type="number" v-model="form.tolerance_minutes" min="0" class="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all text-gray-700 bg-white shadow-sm font-semibold">
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </div>
 
@@ -288,6 +313,8 @@ const form = ref({
   timezone: 'America/Mexico_City',
   isActive: true,
   maxKiosks: 1,
+  entry_time: '08:00',
+  tolerance_minutes: 15,
   logo_base64: '' // We will send the image as base64 for simplicity
 });
 
@@ -356,14 +383,16 @@ onMounted(async () => {
         form.value.contact_phone = data.contact_phone || '';
         form.value.timezone = data.timezone;
         form.value.isActive = data.is_active === 1 || data.is_active === true;
+        form.value.entry_time = data.entry_time ? data.entry_time.substring(0, 5) : '08:00';
+        form.value.tolerance_minutes = data.tolerance_minutes ?? 15;
         // The kiosks amount might be locked after creation, so we just display the count
-        form.value.maxKiosks = data.kiosks?.length || 1;
+        form.value.maxKiosks = data.owned_kiosks?.length || 1;
         
         if (data.logo_path) {
           logoPreview.value = data.logo_path.startsWith('http') ? data.logo_path : 'http://localhost:8000/storage/' + data.logo_path;
         }
-        if (data.kiosks && data.kiosks.length > 0) {
-            dummyKiosks.value = data.kiosks.map((k: any) => k.activation_code);
+        if (data.owned_kiosks && data.owned_kiosks.length > 0) {
+            dummyKiosks.value = data.owned_kiosks.map((k: any) => k.activation_code);
         }
 
       }

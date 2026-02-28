@@ -6,12 +6,18 @@
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4">
         <div>
           <h1 class="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight leading-none mb-1">Administración de Profesores Detallada</h1>
-          <p class="text-sm font-medium text-gray-500">Panel de gestión y monitoreo en tiempo real</p>
+          <p class="text-sm font-medium text-gray-500 mb-1.5">Panel de gestión, horarios y monitoreo del cuerpo docente.</p>
+          <p v-if="activeSchoolName" class="text-[15px] font-black text-brand-blue flex items-center gap-1.5 mt-1"><ion-icon :icon="business"></ion-icon> {{ activeSchoolName }}</p>
         </div>
-        <router-link to="/admin/teachers/create" class="bg-brand-blue hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm shadow-blue-500/30 transition-all flex items-center gap-2 shrink-0">
-          <ion-icon :icon="add" class="text-lg"></ion-icon>
-          Dar de Alta Profesor
-        </router-link>
+        <div class="flex items-center gap-3 shrink-0">
+          <button @click="fetchTeachers()" class="bg-white border border-gray-200 text-gray-700 font-bold w-10 h-10 rounded-xl text-sm shadow-sm hover:bg-gray-50 flex items-center justify-center transition-all" title="Actualizar lista">
+            <ion-icon :icon="refreshOutline" class="text-lg"></ion-icon>
+          </button>
+          <router-link to="/admin/teachers/create" class="bg-brand-blue hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm shadow-blue-500/30 transition-all flex items-center gap-2 shrink-0">
+            <ion-icon :icon="add" class="text-lg"></ion-icon>
+            Dar de Alta Profesor
+          </router-link>
+        </div>
       </div>
 
       <!-- KPI Cards -->
@@ -22,8 +28,11 @@
             <div>
               <h3 class="text-sm font-bold tracking-tight text-gray-500 mb-1">Maestros Presentes</h3>
               <div class="flex items-baseline gap-1">
-                <span class="text-3xl sm:text-4xl font-black text-gray-900 leading-none">25</span>
-                <span class="text-xl font-bold text-gray-400">/30</span>
+                <span class="text-3xl sm:text-4xl font-black text-gray-900 leading-none">
+                  <span v-if="loading">...</span>
+                  <span v-else>{{ presentTeachersCount }}</span>
+                </span>
+                <span class="text-xl font-bold text-gray-400">/{{ totalTeachersCount }}</span>
               </div>
             </div>
             <div class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-brand-blue transition-transform group-hover:scale-110">
@@ -31,7 +40,7 @@
             </div>
           </div>
           <div class="mt-4 flex items-center gap-2 text-xs font-bold text-gray-400">
-            <span class="text-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded">83%</span> del total
+            <span class="text-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded">{{ presentPercentage }}%</span> del total
           </div>
         </div>
 
@@ -41,8 +50,11 @@
             <div>
               <h3 class="text-sm font-bold tracking-tight text-gray-500 mb-1">Grupos Cubiertos</h3>
               <div class="flex items-baseline gap-1">
-                <span class="text-3xl sm:text-4xl font-black text-gray-900 leading-none">12</span>
-                <span class="text-xl font-bold text-gray-400">/12</span>
+                <span class="text-3xl sm:text-4xl font-black text-gray-900 leading-none">
+                  <span v-if="loading">...</span>
+                  <span v-else>{{ coveredGroupsCount }}</span>
+                </span>
+                <span class="text-xl font-bold text-gray-400">/{{ coveredGroupsCount }}</span>
               </div>
             </div>
             <div class="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-500 transition-transform group-hover:scale-110">
@@ -166,12 +178,28 @@ import { ref, onMounted, computed } from 'vue';
 import { IonPage, IonIcon, alertController } from '@ionic/vue';
 import { 
   add, person, checkbox, searchOutline, filterOutline, checkmarkCircleOutline, 
-  eyeOutline, createOutline, trashOutline 
+  eyeOutline, createOutline, trashOutline, business, refreshOutline
 } from 'ionicons/icons';
 import api from '@/services/api';
+import { storage } from '@/services/storage';
 
 const teachers = ref<any[]>([]);
 const loading = ref(true);
+const activeSchoolName = ref('');
+
+const totalTeachersCount = computed(() => teachers.value.length);
+const presentTeachersCount = computed(() => teachers.value.filter(t => t.status === 'Presente').length);
+const presentPercentage = computed(() => totalTeachersCount.value === 0 ? 0 : Math.round((presentTeachersCount.value / totalTeachersCount.value) * 100));
+
+const coveredGroupsCount = computed(() => {
+  const groups = new Set();
+  teachers.value.forEach(t => {
+    if (t.grades) {
+      t.grades.forEach((g: string) => groups.add(g));
+    }
+  });
+  return groups.size;
+});
 
 const fetchTeachers = async () => {
   loading.value = true;
@@ -210,5 +238,13 @@ const deleteTeacher = async (teacher: any) => {
   await alert.present();
 };
 
-onMounted(fetchTeachers);
+onMounted(async () => {
+  const currentId = await storage.get('current_school_id');
+  const userSchools = await storage.get('user_schools');
+  if (currentId && userSchools) {
+    const active = userSchools.find((s: any) => s.id === currentId);
+    if (active) activeSchoolName.value = active.name;
+  }
+  fetchTeachers();
+});
 </script>

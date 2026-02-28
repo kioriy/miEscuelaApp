@@ -9,7 +9,8 @@
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
       <div>
         <h1 class="text-[32px] font-black text-gray-900 tracking-tight leading-none mb-2">Administración de Usuarios del Sistema</h1>
-        <p class="text-gray-500 font-medium">Gestiona el personal y los niveles de acceso en todas las instituciones.</p>
+        <p class="text-gray-500 font-medium mb-1.5">Gestiona el personal y los niveles de acceso en todas las instituciones.</p>
+        <p v-if="activeSchoolName" class="text-[15px] font-black text-brand-blue flex items-center gap-1.5 mt-1"><ion-icon :icon="business"></ion-icon> {{ activeSchoolName }}</p>
       </div>
           <div class="flex items-center gap-3 shrink-0">
             <button @click="fetchUsers(true)" class="bg-white border border-gray-200 text-gray-700 font-bold w-10 h-10 rounded-xl text-sm shadow-sm hover:bg-gray-50 flex items-center justify-center transition-all">
@@ -239,12 +240,14 @@ import { ref, computed, onMounted } from 'vue';
 import { IonPage, IonContent, IonIcon, IonRefresher, IonRefresherContent } from '@ionic/vue';
 import { 
   downloadOutline, personAddOutline, searchOutline, chevronDown, filter,
-  createOutline, trashOutline, eyeOutline, push, documentText, grid, refreshOutline, personOutline
+  createOutline, trashOutline, eyeOutline, push, documentText, grid, refreshOutline, personOutline, business
 } from 'ionicons/icons';
 import api from '@/services/api';
+import { storage } from '@/services/storage';
 
 const loadingStats = ref(true);
 const loadingUsers = ref(true);
+const activeSchoolName = ref('');
 
 const stats = ref({
   schools: 0,
@@ -306,7 +309,13 @@ const handleRefresh = async (event: any) => {
   event.target.complete();
 };
 
-onMounted(() => {
+onMounted(async () => {
+  const currentId = await storage.get('current_school_id');
+  const userSchools = await storage.get('user_schools');
+  if (currentId && userSchools) {
+    const active = userSchools.find((s: any) => s.id === currentId);
+    if (active) activeSchoolName.value = active.name;
+  }
   fetchDashboardStats();
   fetchUsers();
 });

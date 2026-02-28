@@ -6,16 +6,17 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Kiosk;
 use App\Models\School;
+use App\Traits\HandlesSchoolContext;
 
 class KioskSetupController extends Controller
 {
+    use HandlesSchoolContext;
     /**
      * Valida el PIN de activación en la tablet y vincula el dispositivo a la escuela.
      */
     public function getStatus(Request $request)
     {
-        $user = $request->user();
-        $schoolId = $user ? $user->school_id : $request->query('school_id');
+        $schoolId = $this->getSchoolId($request);
 
         if (!$schoolId) {
             return response()->json([
@@ -32,14 +33,41 @@ class KioskSetupController extends Controller
             ], 404);
         }
 
-        $activeKiosksCount = $school->kiosks()->where('is_active', true)->count();
+        $activeKiosksCount = $school->ownedKiosks()->where('is_active', true)->count();
 
         return response()->json([
             'success' => true,
             'data' => [
                 'active_count' => $activeKiosksCount,
                 'total_allowed' => $school->allowed_kiosks,
+                'school_name' => $school->name,
             ]
+        ]);
+    }
+
+    public function getSchoolsForActivation(Request $request)
+    {
+        /** @var \App\Models\User|null $user */
+        $user = auth('sanctum')->user();
+
+        $query = School::select('id', 'name', 'allowed_kiosks')
+            ->withCount(['ownedKiosks as active_kiosks' => function ($q) {
+                $q->where('is_active', true);
+            }]);
+
+        if ($user && $user->role !== 'super_admin') {
+            $schoolIds = $user->schools()->pluck('schools.id');
+            $query->whereIn('id', $schoolIds);
+        } else if (!$user) {
+            // Si por alguna razón no hay usuario autenticado, retornamos vacío por seguridad
+            $query->where('id', -1);
+        }
+
+        $schools = $query->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $schools
         ]);
     }
 
@@ -48,6 +76,9 @@ class KioskSetupController extends Controller
         $request->validate([
             'activation_code' => 'required|string|max:20',
             'device_name' => 'nullable|string|max:50',
+            'owner_school_id' => 'required|exists:schools,id',
+            'additional_school_ids' => 'nullable|array',
+            'additional_school_ids.*' => 'exists:schools,id',
         ]);
 
         $code = trim($request->activation_code);
@@ -69,15 +100,15 @@ class KioskSetupController extends Controller
             ], 403);
         }
 
-        // 2. Verificamos que la escuela no haya superado su límite
-        $school = School::find($kiosk->school_id);
+        // 2. Verificamos que la escuela dueña no haya superado su límite
+        $school = School::find($request->owner_school_id);
 
-        $activeKiosksCount = $school->kiosks()->where('is_active', true)->count();
+        $activeKiosksCount = $school->ownedKiosks()->where('is_active', true)->count();
 
         if ($activeKiosksCount >= $school->allowed_kiosks) {
             return response()->json([
                 'success' => false,
-                'message' => 'Límite de kioscos alcanzado. Contacta a soporte para aumentar tu plan.'
+                'message' => 'Límite de kioscos alcanzado para la Sede Principal. Contacta a soporte para aumentar tu plan.'
             ], 403);
         }
 
@@ -85,7 +116,14 @@ class KioskSetupController extends Controller
         $kiosk->update([
             'is_active' => true,
             'name' => $request->device_name ?? 'Kiosco ' . ($activeKiosksCount + 1),
+            'owner_school_id' => $school->id,
         ]);
+
+        $syncIds = collect([$school->id]);
+        if ($request->has('additional_school_ids') && is_array($request->additional_school_ids)) {
+            $syncIds = $syncIds->merge($request->additional_school_ids);
+        }
+        $kiosk->schools()->sync($syncIds->unique()->toArray());
 
         // 4. Generamos un token permanente (Sanctum) exclusivo para este Kiosco
         // Ojo: Usamos un naming diferenciado de tokens para mayor seguridad
@@ -101,9 +139,13 @@ class KioskSetupController extends Controller
             'kiosk' => [
                 'id' => $kiosk->id,
                 'name' => $kiosk->name,
-                'school_id' => $school->id,
-                'school_name' => $school->name,
-                'school_logo_url' => $school->logo_path ? asset('storage/' . $school->logo_path) : null
+                'schools' => $kiosk->load('schools')->schools->map(function ($s) {
+                    return [
+                        'id' => $s->id,
+                        'name' => $s->name,
+                        'logo_url' => $s->logo_path ? asset('storage/' . $s->logo_path) : null
+                    ];
+                })
             ]
         ], 200);
     }
@@ -118,7 +160,7 @@ class KioskSetupController extends Controller
             'type' => 'SYNC_TIME',
             'timestamp' => now()->timestamp,
             'exp' => now()->addMinutes(15)->timestamp, // QR code expires in 15 mins
-            'school_id' => $request->user()->school_id,
+            'school_id' => $this->getSchoolId($request),
         ];
 
         // Add a simple signature so offline devices can do basic validation
@@ -171,9 +213,14 @@ class KioskSetupController extends Controller
                 return response()->json(['success' => false, 'message' => 'Kiosco no encontrado'], 404);
             }
 
-            // Optional: verify that the token belongs to the same school
-            if (isset($payload['school_id']) && $kiosk->school_id !== $payload['school_id']) {
-                return response()->json(['success' => false, 'message' => 'Escuela no coincide'], 403);
+            // Optional: verify that the token belongs to one of the schools this Kiosk manages
+            // Note: Since Kiosks can handle multiple schools, we check if the requested sync school_id is allowed
+            // We'll extract this by loading the relations
+            $kiosk->load('schools');
+            $allowedSchoolIds = $kiosk->schools->pluck('id')->toArray();
+
+            if (isset($payload['school_id']) && !in_array($payload['school_id'], $allowedSchoolIds)) {
+                return response()->json(['success' => false, 'message' => 'Escuela no autorizada para este kiosco'], 403);
             }
 
             // Calculate offset: offset is how many seconds to ADD to the Kiosk's local time to get the Server's time.

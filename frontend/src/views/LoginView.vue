@@ -155,6 +155,14 @@ const onGoogleCallback = async (response: any) => {
     if (apiResponse.data.success && apiResponse.data.token) {
       await storage.set('auth_token', apiResponse.data.token);
       await storage.set('auth_user', apiResponse.data.user);
+      await storage.set('user_schools', apiResponse.data.schools || []);
+      
+      // Establecer contexto inicial de escuela
+      if (apiResponse.data.schools && apiResponse.data.schools.length > 0) {
+        await storage.set('current_school_id', apiResponse.data.schools[0].id);
+      } else if (apiResponse.data.user.school_id) {
+        await storage.set('current_school_id', apiResponse.data.user.school_id);
+      }
       
       const toast = await toastController.create({
         message: 'Bienvenido de nuevo, ' + apiResponse.data.user.name,

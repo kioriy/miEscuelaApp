@@ -35,7 +35,7 @@ class ParentAuthController extends Controller
                     ->first();
 
                 if ($student) {
-                    // Crear usuario con rol 'parent' vinculado a la escuela del alumno
+                    // Crear usuario con rol 'parent'
                     $user = User::create([
                         'name' => $googleUser->getName(),
                         'email' => $email,
@@ -43,8 +43,11 @@ class ParentAuthController extends Controller
                         'role' => 'parent',
                         'google_id' => $googleUser->getId(),
                         'avatar_url' => $googleUser->getAvatar(),
-                        'school_id' => $student->school_id,
+                        'school_id' => $student->school_id, // Keep for backward compatibility/default
                     ]);
+
+                    // Vincular a la escuela en la tabla pivot
+                    $user->schools()->attach($student->school_id, ['role' => 'parent']);
                 } else {
                     return response()->json([
                         'success' => false,
@@ -57,15 +60,24 @@ class ParentAuthController extends Controller
                     'google_id' => $googleUser->getId(),
                     'avatar_url' => $googleUser->getAvatar(),
                 ]);
+
+                // Si tiene school_id pero no está en el pivot (por migraciones manuales o data previa), sincronizar
+                if ($user->school_id && !$user->schools()->where('schools.id', $user->school_id)->exists()) {
+                    $user->schools()->attach($user->school_id, ['role' => $user->role]);
+                }
             }
 
             // Generar token de acceso (Sanctum)
             $token = $user->createToken('auth_token')->plainTextToken;
 
+            // Cargar escuelas asociadas
+            $user->load('schools');
+
             return response()->json([
                 'success' => true,
                 'token' => $token,
                 'user' => $user,
+                'schools' => $user->schools,
                 'message' => 'Login exitoso'
             ]);
         } catch (\Exception $e) {

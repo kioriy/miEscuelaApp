@@ -8,14 +8,19 @@ use App\Models\User;
 use App\Models\TeacherGroupAssignment;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use App\Traits\HandlesSchoolContext;
 
 class TeacherController extends Controller
 {
+    use HandlesSchoolContext;
+
     public function index(Request $request)
     {
-        $schoolId = $request->user()->school_id;
+        $schoolId = $this->getSchoolId($request);
 
-        $teachers = User::where('school_id', $schoolId)
+        $teachers = User::whereHas('schools', function ($q) use ($schoolId) {
+            $q->where('schools.id', $schoolId);
+        })->orWhere('school_id', $schoolId)
             ->where('role', 'teacher')
             ->with('teacherGroups')
             ->get();
@@ -52,7 +57,7 @@ class TeacherController extends Controller
             'groups' => 'array' // Array of "1-A", "2-B" strings
         ]);
 
-        $schoolId = $request->user()->school_id;
+        $schoolId = $this->getSchoolId($request);
 
         $teacher = User::create([
             'name' => $request->name,
@@ -62,6 +67,10 @@ class TeacherController extends Controller
             'school_id' => $schoolId,
             'is_active' => $request->is_active ?? true,
         ]);
+
+        if ($schoolId) {
+            $teacher->schools()->attach($schoolId, ['role' => 'teacher']);
+        }
 
         if ($request->has('groups')) {
             foreach ($request->groups as $groupStr) {
@@ -86,8 +95,15 @@ class TeacherController extends Controller
 
     public function show(Request $request, $id)
     {
-        $schoolId = $request->user()->school_id;
-        $teacher = User::where('school_id', $schoolId)->where('role', 'teacher')->with('teacherGroups')->findOrFail($id);
+        $schoolId = $this->getSchoolId($request);
+        $teacher = User::where(function ($q) use ($schoolId) {
+            $q->whereHas('schools', function ($sq) use ($schoolId) {
+                $sq->where('schools.id', $schoolId);
+            })->orWhere('school_id', $schoolId);
+        })
+            ->where('role', 'teacher')
+            ->with('teacherGroups')
+            ->findOrFail($id);
 
         return response()->json([
             'success' => true,
@@ -105,8 +121,14 @@ class TeacherController extends Controller
 
     public function update(Request $request, $id)
     {
-        $schoolId = $request->user()->school_id;
-        $teacher = User::where('school_id', $schoolId)->where('role', 'teacher')->findOrFail($id);
+        $schoolId = $this->getSchoolId($request);
+        $teacher = User::where(function ($q) use ($schoolId) {
+            $q->whereHas('schools', function ($sq) use ($schoolId) {
+                $sq->where('schools.id', $schoolId);
+            })->orWhere('school_id', $schoolId);
+        })
+            ->where('role', 'teacher')
+            ->findOrFail($id);
 
         $request->validate([
             'name' => 'required|string|max:255',
@@ -145,8 +167,14 @@ class TeacherController extends Controller
 
     public function destroy(Request $request, $id)
     {
-        $schoolId = $request->user()->school_id;
-        $teacher = User::where('school_id', $schoolId)->where('role', 'teacher')->findOrFail($id);
+        $schoolId = $this->getSchoolId($request);
+        $teacher = User::where(function ($q) use ($schoolId) {
+            $q->whereHas('schools', function ($sq) use ($schoolId) {
+                $sq->where('schools.id', $schoolId);
+            })->orWhere('school_id', $schoolId);
+        })
+            ->where('role', 'teacher')
+            ->findOrFail($id);
 
         $teacher->delete(); // Cascades to teacher_group_assignments because of foreign key
 

@@ -12,8 +12,15 @@ class Kiosk extends Model
 
     protected $guarded = [];
 
-    public function school()
+    public function ownerSchool()
     {
-        return $this->belongsTo(School::class);
+        return $this->belongsTo(School::class, 'owner_school_id');
+    }
+
+    public function schools()
+    {
+        return $this->belongsToMany(School::class, 'kiosk_school')
+            ->withPivot('created_at', 'updated_at')
+            ->withTimestamps();
     }
 }

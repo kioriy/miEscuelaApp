@@ -9,10 +9,11 @@
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
       <div>
         <h1 class="text-[32px] font-black text-gray-900 tracking-tight leading-none mb-2">Administración de Escuelas</h1>
-        <p class="text-gray-500 font-medium">Gestión integral de las instituciones educativas registradas en el sistema.</p>
+        <p class="text-gray-500 font-medium mb-1.5">Gestión integral de las instituciones educativas registradas en el sistema.</p>
+        <p v-if="activeSchoolName" class="text-[15px] font-black text-brand-blue flex items-center gap-1.5 mt-1"><ion-icon :icon="business"></ion-icon> {{ activeSchoolName }}</p>
       </div>
           <div class="flex items-center gap-3 shrink-0">
-            <button @click="fetchSchools(true)" class="bg-white border border-gray-200 text-gray-700 font-bold w-10 h-10 rounded-xl text-sm shadow-sm hover:bg-gray-50 flex items-center justify-center transition-all">
+            <button @click="loadingStats = true; fetchDashboardStats(); fetchSchools(true);" class="bg-white border border-gray-200 text-gray-700 font-bold w-10 h-10 rounded-xl text-sm shadow-sm hover:bg-gray-50 flex items-center justify-center transition-all">
               <ion-icon :icon="refreshOutline" class="text-lg"></ion-icon>
             </button>
             <button class="bg-white border border-gray-200 text-gray-700 font-bold py-2.5 px-5 rounded-xl text-sm shadow-sm hover:bg-gray-50 flex items-center gap-2 transition-all">
@@ -238,6 +239,7 @@
              </div>
           </div>
           <h4 class="text-sm font-bold text-gray-900 mb-1">Arrastra tu archivo aquí o haz clic para subir</h4>
+          <p class="text-xs text-gray-400 font-medium">matricula, nombre, apellidos, nivel, grado, grupo, turno, email_tutor, email_tutor_2</p>
           <p class="text-xs text-gray-400 font-medium">Tamaño máximo: 10MB</p>
         </div>
 
@@ -294,9 +296,10 @@ import {
   createOutline, documentTextOutline, navigateCircleOutline, refreshOutline
 } from 'ionicons/icons';
 import api from '@/services/api';
+import { storage } from '@/services/storage';
 
-const loadingStats = ref(true);
 const loadingSchools = ref(true);
+const loadingStats = ref(true);
 
 const stats = ref({
   schools: 0,
@@ -305,6 +308,7 @@ const stats = ref({
   kiosks: 0,
   systemHealth: 0
 });
+const activeSchoolName = ref('');
 
 const schools = ref<any[]>([]);
 const searchQuery = ref('');
@@ -329,9 +333,9 @@ const filteredSchools = computed(() => {
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase();
     result = result.filter(s => 
-      s.name.toLowerCase().includes(q) || 
-      (s.address && s.address.toLowerCase().includes(q)) || 
-      (s.cct && s.cct.toLowerCase().includes(q))
+      String(s.name || '').toLowerCase().includes(q) || 
+      String(s.address || '').toLowerCase().includes(q) || 
+      String(s.cct || '').toLowerCase().includes(q)
     );
   }
 
@@ -434,7 +438,13 @@ const uploadFile = async (file: File) => {
   }
 };
 
-onMounted(() => {
+onMounted(async () => {
+  const currentId = await storage.get('current_school_id');
+  const schools = await storage.get('user_schools');
+  if (currentId && schools) {
+    const active = schools.find((s: any) => s.id === currentId);
+    if (active) activeSchoolName.value = active.name;
+  }
   fetchDashboardStats();
   fetchSchools();
 });

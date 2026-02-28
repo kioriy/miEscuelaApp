@@ -7,15 +7,23 @@ use Illuminate\Http\Request;
 use App\Models\AttendanceLog;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Traits\HandlesSchoolContext;
 
 class AttendanceSyncController extends Controller
 {
+    use HandlesSchoolContext;
     /**
      * Obtiene estadísticas rápidas de hoy para el monitor.
      */
     public function getKioskStats(Request $request)
     {
-        $schoolId = $request->user()->school_id;
+        $user = $request->user();
+        if ($user instanceof \App\Models\Kiosk) {
+            $user->load('schools');
+            $schoolIds = $user->schools->pluck('id')->toArray();
+        } else {
+            $schoolIds = [$this->getSchoolId($request)];
+        }
 
         // Si el monitor envía su inicio de día local (ISO), lo usamos para filtrar exactamente lo mismo
         $localStart = $request->query('local_start');
@@ -27,12 +35,12 @@ class AttendanceSyncController extends Controller
             $today = now()->startOfDay();
         }
 
-        $entries = AttendanceLog::where('school_id', $schoolId)
+        $entries = AttendanceLog::whereIn('school_id', $schoolIds)
             ->where('scanned_at', '>=', $today)
             ->where('type', 'in')
             ->count();
 
-        $exits = AttendanceLog::where('school_id', $schoolId)
+        $exits = AttendanceLog::whereIn('school_id', $schoolIds)
             ->where('scanned_at', '>=', $today)
             ->where('type', 'out')
             ->count();
@@ -61,12 +69,18 @@ class AttendanceSyncController extends Controller
             // device_id y authorized_person_id son opcionales
         ]);
 
-        // 2. Obtenemos el ID de la escuela y del kiosco desde el token
+        // 2. Obtenemos el ID general de escuela y del kiosco desde el token
         $user = $request->user();
-        $schoolId = $user->school_id;
+        $fallbackSchoolId = $this->getSchoolId($request);
         $kioskId = ($user instanceof \App\Models\Kiosk) ? $user->id : null;
 
         $logs = $request->input('logs');
+        $studentIds = collect($logs)->pluck('student_id')->unique()->toArray();
+
+        // Pre-fetch la escuela primigenia de todos los estudiantes para enrutarlos correctamente (Multi-Sede)
+        $studentSchools = \App\Models\Student::whereIn('id', $studentIds)
+            ->pluck('school_id', 'id')
+            ->toArray();
 
         $recordsToInsert = [];
         $now = now()->toDateTimeString(); // Momento exacto en que llega al servidor
@@ -76,8 +90,11 @@ class AttendanceSyncController extends Controller
             // Convertimos la fecha ISO (JS) a formato MySQL
             $scannedAt = \Illuminate\Support\Carbon::parse($log['scanned_at'])->toDateTimeString();
 
+            // Buscamos a cuál de las sedes pertenece este alumno; si no se encuentra (borrado), usamos el fallback
+            $resolvedSchoolId = $studentSchools[$log['student_id']] ?? $fallbackSchoolId;
+
             $recordsToInsert[] = [
-                'school_id' => $schoolId,
+                'school_id' => $resolvedSchoolId,
                 'student_id' => $log['student_id'],
                 'scanned_at' => $scannedAt,
                 'type' => $log['type'],

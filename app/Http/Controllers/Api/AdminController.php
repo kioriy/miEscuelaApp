@@ -11,14 +11,17 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Shuchkin\SimpleXLSX;
+use App\Traits\HandlesSchoolContext;
 
 class AdminController extends Controller
 {
+    use HandlesSchoolContext;
+
     public function dashboardStats(Request $request)
     {
         $user = $request->user();
         $isSuperAdmin = $user->role === 'super_admin';
-        $schoolId = $user->school_id;
+        $schoolId = $this->getSchoolId($request);
 
         $querySchools = \App\Models\School::query();
         $queryStudents = \App\Models\Student::query();
@@ -28,7 +31,18 @@ class AdminController extends Controller
         if (!$isSuperAdmin && $schoolId) {
             $querySchools->where('id', $schoolId);
             $queryStudents->where('school_id', $schoolId);
-            $queryUsers->where('school_id', $schoolId);
+            // Optimization: if we have a school context, we filter users that belong to that school
+            $queryUsers->whereHas('schools', function ($q) use ($schoolId) {
+                $q->where('schools.id', $schoolId);
+            })->orWhere('school_id', $schoolId); // legacy fallback
+            $queryKiosks->where('school_id', $schoolId);
+        } elseif ($isSuperAdmin && $schoolId) {
+            // Super Admin can filter by a specific school if they want
+            $querySchools->where('id', $schoolId);
+            $queryStudents->where('school_id', $schoolId);
+            $queryUsers->whereHas('schools', function ($q) use ($schoolId) {
+                $q->where('schools.id', $schoolId);
+            })->orWhere('school_id', $schoolId);
             $queryKiosks->where('school_id', $schoolId);
         }
 
@@ -60,9 +74,15 @@ class AdminController extends Controller
 
     public function getSchools(Request $request)
     {
-        // En Producción se añadiría paginación
-        $schools = \App\Models\School::withCount('kiosks')->get();
-        // Contar el número aproximado de alumnos manualmente agrupando por si acaso
+        $user = $request->user();
+
+        if ($user->role === 'super_admin') {
+            $schools = \App\Models\School::withCount('ownedKiosks as kiosks_count')->get();
+        } else {
+            $schools = $user->schools()->withCount('ownedKiosks as kiosks_count')->get();
+        }
+
+        // Contar el número aproximado de alumnos manualmente
         foreach ($schools as $school) {
             $school->students_count = \App\Models\Student::where('school_id', $school->id)->count();
         }
@@ -76,14 +96,16 @@ class AdminController extends Controller
     public function storeSchool(Request $request)
     {
         $request->validate([
-            'cct' => 'required|string|max:50|unique:schools,cct',
+            'cct' => 'required|string|max:50',
             'name' => 'required|string|max:255',
             'address' => 'nullable|string|max:255',
             'contact_phone' => 'nullable|string|max:50',
             'logo_base64' => 'nullable|string',
             'timezone' => 'required|string',
             'isActive' => 'boolean',
-            'maxKiosks' => 'required|integer|min:1|max:50'
+            'maxKiosks' => 'required|integer|min:1|max:50',
+            'entry_time' => 'nullable|string',
+            'tolerance_minutes' => 'nullable|integer|min:0'
         ]);
 
         $logoPath = null;
@@ -110,15 +132,20 @@ class AdminController extends Controller
             'timezone' => $request->timezone,
             'is_active' => $request->isActive,
             'allowed_kiosks' => $request->maxKiosks,
+            'entry_time' => $request->entry_time,
+            'tolerance_minutes' => $request->tolerance_minutes ?? 15,
         ]);
 
         // Generar Kioscos automáticamente
         $kiosksQty = $request->maxKiosks;
         for ($i = 0; $i < $kiosksQty; $i++) {
-            \App\Models\Kiosk::create([
-                'school_id' => $school->id,
+            $kiosk = \App\Models\Kiosk::create([
+                'owner_school_id' => $school->id,
                 'activation_code' => 'K-' . strtoupper(substr(uniqid(), -4)) . '-' . mt_rand(10, 99)
             ]);
+
+            // Adjuntar inmediatamente la escuela a la tabla pivote de kioscos
+            $kiosk->schools()->attach($school->id);
         }
 
         return response()->json([
@@ -130,7 +157,15 @@ class AdminController extends Controller
 
     public function getUsers(Request $request)
     {
-        $users = \App\Models\User::with('school')->get();
+        $schoolId = $this->getSchoolId($request);
+
+        if ($schoolId) {
+            $users = \App\Models\User::whereHas('schools', function ($q) use ($schoolId) {
+                $q->where('schools.id', $schoolId);
+            })->orWhere('school_id', $schoolId)->with('schools')->get();
+        } else {
+            $users = \App\Models\User::with('schools')->get();
+        }
 
         return response()->json([
             'success' => true,
@@ -143,8 +178,9 @@ class AdminController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'role' => 'required|string|in:super_admin,admin,teacher,parent',
-            'school_id' => 'nullable|exists:schools,id'
+            'role' => 'required|string|in:super_admin,admin,teacher,parent,director',
+            'school_ids' => 'nullable|array',
+            'school_ids.*' => 'exists:schools,id'
         ]);
 
         $user = \App\Models\User::create([
@@ -152,22 +188,23 @@ class AdminController extends Controller
             'email' => $request->email,
             'password' => \Illuminate\Support\Facades\Hash::make('password123'), // Contraseña por defecto
             'role' => $request->role,
+            'school_id' => !empty($request->school_ids) ? $request->school_ids[0] : null, // fallback
         ]);
 
-        // Si es Admin/Director asociarlo a la escuela correspondiente (se necesitará pivot o campo directo si se modifica la BD)
-        // Por ahora, como es un solo colegio por director, guardamos el school_id en tabla usuarios si existiese.
-        // Simulando envío de invitación
+        if (!empty($request->school_ids)) {
+            $user->schools()->attach($request->school_ids, ['role' => $request->role]);
+        }
 
         return response()->json([
             'success' => true,
             'message' => 'Usuario invitado exitosamente.',
-            'data' => $user
+            'data' => $user->load('schools')
         ]);
     }
 
     public function showUser($id)
     {
-        $user = \App\Models\User::with('school')->findOrFail($id);
+        $user = \App\Models\User::with(['school', 'schools'])->findOrFail($id);
         return response()->json(['success' => true, 'data' => $user]);
     }
 
@@ -177,23 +214,30 @@ class AdminController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
-            'role' => 'required|string|in:super_admin,admin,teacher,parent',
-            'school_id' => 'nullable|exists:schools,id'
+            'role' => 'required|string|in:super_admin,admin,teacher,parent,director',
+            'school_ids' => 'nullable|array',
+            'school_ids.*' => 'exists:schools,id'
         ]);
 
         $user->update([
             'name' => $request->name,
             'email' => $request->email,
             'role' => $request->role,
-            'school_id' => $request->school_id
+            'school_id' => !empty($request->school_ids) ? $request->school_ids[0] : null
         ]);
 
-        return response()->json(['success' => true, 'message' => 'Usuario actualizado exitosamente.', 'data' => $user]);
+        if (is_array($request->school_ids)) {
+            $user->schools()->syncWithPivotValues($request->school_ids, ['role' => $request->role]);
+        } else {
+            $user->schools()->detach();
+        }
+
+        return response()->json(['success' => true, 'message' => 'Usuario actualizado exitosamente.', 'data' => $user->load('schools')]);
     }
 
     public function showSchool($id)
     {
-        $school = \App\Models\School::with('kiosks')->findOrFail($id);
+        $school = \App\Models\School::with('ownedKiosks', 'activeKiosks')->findOrFail($id);
         return response()->json(['success' => true, 'data' => $school]);
     }
 
@@ -202,14 +246,16 @@ class AdminController extends Controller
         $school = \App\Models\School::findOrFail($id);
 
         $request->validate([
-            'cct' => 'required|string|max:50|unique:schools,cct,' . $school->id,
+            'cct' => 'required|string|max:50',
             'name' => 'required|string|max:255',
             'address' => 'nullable|string|max:255',
             'contact_phone' => 'nullable|string|max:50',
             'logo_base64' => 'nullable|string',
             'timezone' => 'required|string',
             'isActive' => 'boolean',
-            'maxKiosks' => 'nullable|integer|min:0'
+            'maxKiosks' => 'nullable|integer|min:0',
+            'entry_time' => 'nullable|string',
+            'tolerance_minutes' => 'nullable|integer|min:0'
         ]);
 
         $logoPath = $school->logo_path;
@@ -235,15 +281,19 @@ class AdminController extends Controller
             'timezone' => $request->timezone,
             'is_active' => $request->isActive,
             'allowed_kiosks' => $request->maxKiosks ?? $school->allowed_kiosks,
+            'entry_time' => $request->has('entry_time') ? $request->entry_time : $school->entry_time,
+            'tolerance_minutes' => $request->has('tolerance_minutes') ? $request->tolerance_minutes : $school->tolerance_minutes,
         ]);
 
-        if ($request->filled('maxKiosks') && $request->maxKiosks > $school->kiosks()->count()) {
-            $toAdd = $request->maxKiosks - $school->kiosks()->count();
+        if ($request->filled('maxKiosks') && $request->maxKiosks > $school->ownedKiosks()->count()) {
+            $toAdd = $request->maxKiosks - $school->ownedKiosks()->count();
             for ($i = 0; $i < $toAdd; $i++) {
-                \App\Models\Kiosk::create([
-                    'school_id' => $school->id,
+                $kiosk = \App\Models\Kiosk::create([
+                    'owner_school_id' => $school->id,
                     'activation_code' => 'K-' . strtoupper(substr(uniqid(), -4)) . '-' . mt_rand(10, 99)
                 ]);
+
+                $kiosk->schools()->attach($school->id);
             }
         }
 
@@ -337,7 +387,11 @@ class AdminController extends Controller
                 foreach ($row as $key => $value) {
                     $cleanKey = strtolower(trim($key));
                     if (isset($mapping[$cleanKey])) {
-                        $normalizedRow[$mapping[$cleanKey]] = trim($value);
+                        $val = trim($value);
+                        if ($mapping[$cleanKey] === 'shift') {
+                            $val = strtolower($val);
+                        }
+                        $normalizedRow[$mapping[$cleanKey]] = $val;
                     }
                 }
 
@@ -364,6 +418,7 @@ class AdminController extends Controller
                     ->exists();
 
                 if ($exists) {
+                    $results['errors'][] = "Fila " . ($index + 2) . ": La matrícula '{$normalizedRow['enrollment_code']}' ya está registrada en esta escuela.";
                     $results['skipped']++;
                     continue;
                 }
@@ -388,8 +443,9 @@ class AdminController extends Controller
         }
     }
 
-    public function getLeaderboard(Request $request, $school_id)
+    public function getLeaderboard(Request $request, $school_id = null)
     {
+        $schoolId = $school_id ?: $this->getSchoolId($request);
         // Top 5 alumnos con más asistencias hoy
         $localStart = $request->query('local_start');
         $today = $localStart ? \Illuminate\Support\Carbon::parse($localStart)->toDateTimeString() : now()->startOfDay();
@@ -414,11 +470,10 @@ class AdminController extends Controller
 
     public function directorDashboardStats(Request $request)
     {
-        $user = $request->user();
-        $schoolId = $user->school_id;
+        $schoolId = $this->getSchoolId($request);
 
         if (!$schoolId) {
-            return response()->json(['success' => false, 'message' => 'No school associated.'], 403);
+            return response()->json(['success' => false, 'message' => 'No se ha seleccionado una escuela.'], 403);
         }
 
         $localStart = $request->query('local_start');
@@ -560,8 +615,8 @@ class AdminController extends Controller
 
     public function getStudents(Request $request)
     {
-        $user = $request->user();
-        $query = \App\Models\Student::where('school_id', $user->school_id);
+        $schoolId = $this->getSchoolId($request);
+        $query = \App\Models\Student::where('school_id', $schoolId);
 
         if ($request->has('search')) {
             $search = $request->search;
@@ -598,7 +653,7 @@ class AdminController extends Controller
         ]);
 
         $data = $request->except(['photo_url', 'photo']);
-        $data['school_id'] = $request->user()->school_id;
+        $data['school_id'] = $this->getSchoolId($request);
 
         if ($request->hasFile('photo')) {
             $path = $request->file('photo')->store('students/photos', 'public');
@@ -617,7 +672,7 @@ class AdminController extends Controller
 
     public function showStudent(Request $request, $id)
     {
-        $student = \App\Models\Student::where('school_id', $request->user()->school_id)->findOrFail($id);
+        $student = \App\Models\Student::where('school_id', $this->getSchoolId($request))->findOrFail($id);
         $student->photo_url = $student->photo_path ? asset('storage/' . $student->photo_path) : null;
 
         return response()->json([
@@ -628,7 +683,7 @@ class AdminController extends Controller
 
     public function updateStudent(Request $request, $id)
     {
-        $student = \App\Models\Student::where('school_id', $request->user()->school_id)->findOrFail($id);
+        $student = \App\Models\Student::where('school_id', $this->getSchoolId($request))->findOrFail($id);
 
         $request->validate([
             'first_name' => 'required|string|max:100',
@@ -659,7 +714,7 @@ class AdminController extends Controller
 
     public function destroyStudent(Request $request, $id)
     {
-        $student = \App\Models\Student::where('school_id', $request->user()->school_id)->findOrFail($id);
+        $student = \App\Models\Student::where('school_id', $this->getSchoolId($request))->findOrFail($id);
 
         if ($student->photo_path) {
             Storage::disk('public')->delete($student->photo_path);
@@ -721,7 +776,7 @@ class AdminController extends Controller
             ], 422);
         }
 
-        $school_id = $request->user()->school_id;
+        $school_id = $this->getSchoolId($request);
         $zipFile = $request->file('zip_file');
 
         $tempPath = storage_path('app/temp/bulk_' . uniqid());
