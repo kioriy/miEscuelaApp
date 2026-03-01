@@ -36,8 +36,6 @@ import '@ionic/vue/css/palettes/dark.system.css';
 /* Theme variables */
 import './theme/variables.css';
 
-console.log('Mi Client ID real es:', import.meta.env.VITE_GOOGLE_CLIENT_ID);
-
 const app = createApp(App)
   .use(IonicVue)
   .use(vue3GoogleLogin, {

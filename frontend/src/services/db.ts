@@ -33,6 +33,11 @@ export class AppDatabase extends Dexie {
             attendanceLogs: '++id, student_id, sync_status, scanned_at'
         });
     }
+
+    async clear() {
+        await this.students.clear();
+        await this.attendanceLogs.clear();
+    }
 }
 
 export const db = new AppDatabase();

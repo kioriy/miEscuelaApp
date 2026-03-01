@@ -9,18 +9,30 @@ export class SyncService {
     static async pullStudents() {
         try {
             const lastSync = await storage.get('last_students_sync') || '2000-01-01 00:00:00';
+            const kioskConfig = await storage.get('kiosk_config');
+            const kioskId = kioskConfig?.id;
 
             const res = await api.get('/sync/monitor/pull', {
-                params: { last_sync: lastSync }
+                params: {
+                    last_sync: lastSync,
+                    kiosk_id: kioskId
+                }
             });
 
             if (res.data.success) {
                 const { students, authorized_persons } = res.data.data;
 
                 // 1. Guardar alumnos en Dexie (Upsert)
+                if (res.data.data.debug) {
+                    console.log('[Sync] Debug Backend:', res.data.data.debug);
+                }
+
                 if (students.length > 0) {
+                    const schoolsFound = [...new Set(students.map((s: any) => s.school_id))];
+                    console.log(`[Sync] Recibidos ${students.length} alumnos de las escuelas: ${schoolsFound.join(', ')}`);
                     await db.students.bulkPut(students);
-                    console.log(`[Sync] ${students.length} alumnos sincronizados.`);
+                } else {
+                    console.log('[Sync] No hay alumnos nuevos para descargar.');
                 }
 
                 // 2. Guardar última fecha de sincronización

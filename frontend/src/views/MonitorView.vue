@@ -441,8 +441,15 @@ const handleScan = async () => {
 
   const matricula = rawVal.toUpperCase();
 
+  console.log(`[Scan] Buscando matrícula: ${matricula} ...`);
   // 1. Buscar alumno en la base de datos local (Dexie)
   const student = await db.students.get({ enrollment_code: matricula });
+
+  if (student) {
+    console.log(`[Scan] Alumno encontrado localmente: ${student.first_name} (ID: ${student.id}, Escuela: ${student.school_id})`);
+  } else {
+    console.warn(`[Scan] Matrícula no encontrada en Dexie: ${matricula}`);
+  }
 
   // Limpiar errores previos
   scanError.value = null;
@@ -568,12 +575,17 @@ onMounted(async () => {
   }
 
   // FORCE FULL SYNC: Multi-School patch
-  const hasForcedMultiSync = await storage.get('multi_sync_forced_v1');
+  const hasForcedMultiSync = await storage.get('multi_sync_forced_v7');
   if (!hasForcedMultiSync) {
+    console.log('[System] Forcing full sync (v7) - MULTI-SCHOOL CONTEXT FIX...');
+    await db.clear();
     await storage.remove('last_students_sync');
-    await storage.set('multi_sync_forced_v1', true);
-    console.log('[System] Forced full sync for Multi-School architecture.');
+    await storage.set('multi_sync_forced_v7', true);
   }
+
+  // Diagnostic: Total students
+  const totalStudents = await db.students.count();
+  console.log(`[System] Base de datos Dexie inicializada. Total alumnos locales: ${totalStudents}`);
 
   // Si la hora corregida (o la del sistema) es menor a 2025, el reloj está mal
   if (getLocalTime().getFullYear() < 2025) {

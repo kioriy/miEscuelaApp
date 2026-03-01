@@ -28,12 +28,12 @@ trait HandlesSchoolContext
                     return $schoolId;
                 }
             } else if ($user instanceof \App\Models\Kiosk) {
-                // Kiosks are usually locked to their own school_id
-                return $user->school_id;
+                // Kiosks are usually locked to their own owner_school_id
+                return $user->owner_school_id;
             }
         }
 
         // 2. Fallback to user's default school_id (works for both User and Kiosk)
-        return $user->school_id;
+        return ($user instanceof \App\Models\Kiosk) ? $user->owner_school_id : $user->school_id;
     }
 }

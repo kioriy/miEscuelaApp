@@ -27,17 +27,34 @@ class MonitorSyncController extends Controller
 
         if ($user instanceof \App\Models\Kiosk) {
             $user->load('schools');
-            foreach ($user->schools as $school) {
-                // Si la escuela fue afiliada después de la última sincronización, la consideramos "nueva".
-                // De esta manera, descargará TODOS sus alumnos descartando la restricción de updated_at.
-                if (!$school->pivot->created_at || $school->pivot->created_at > $lastSync) {
+            $kiosk = $user;
+        } else {
+            // Fallback for Director/Admin previewing or testing
+            $kioskId = $request->input('kiosk_id');
+            if ($kioskId) {
+                // Validate if user has access to this kiosk (simplified for now, usually check school_id)
+                $kiosk = \App\Models\Kiosk::with('schools')->find($kioskId);
+            } else {
+                $kiosk = null;
+            }
+        }
+
+        if ($kiosk) {
+            $now = now();
+            foreach ($kiosk->schools as $school) {
+                $pivotCreatedAt = $school->pivot->created_at;
+
+                // Safety Window: If affiliated in the last 24 hours (or missing timestamp), treat as NEW.
+                $isRecentlyAffiliated = $pivotCreatedAt && $pivotCreatedAt->diffInHours($now) < 24;
+
+                if (!$pivotCreatedAt || $isRecentlyAffiliated || $pivotCreatedAt > $lastSync) {
                     $newSchoolIds[] = $school->id;
                 } else {
                     $standardSchoolIds[] = $school->id;
                 }
             }
         } else {
-            // Fallback for direct testing
+            // Fallback to single school context if no kiosk identified
             $standardSchoolIds[] = $this->getSchoolId($request);
         }
 
@@ -95,7 +112,12 @@ class MonitorSyncController extends Controller
             'timestamp' => now()->toDateTimeString(), // El monitor guardará esta fecha para su próxima petición
             'data' => [
                 'students' => $students,
-                'authorized_persons' => $authorizedPersons
+                'authorized_persons' => $authorizedPersons,
+                'debug' => [
+                    'received_kiosk_id' => $request->input('kiosk_id'),
+                    'standardSchoolIds' => $standardSchoolIds,
+                    'newSchoolIds' => $newSchoolIds
+                ]
             ]
         ], 200);
     }
