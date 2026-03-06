@@ -245,6 +245,12 @@ const fetchStudent = async () => {
     if (res.data.success) {
       const data = res.data.data;
       form.value = { ...data };
+      if (data.classroom) {
+        form.value.school_level = data.classroom.school_level;
+        form.value.grade = data.classroom.grade;
+        form.value.group_letter = data.classroom.group_letter;
+        form.value.shift = data.classroom.shift;
+      }
       if (data.photo_url) {
         photoPreview.value = data.photo_url;
       }

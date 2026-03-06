@@ -456,9 +456,8 @@ const handleScan = async () => {
 
   if (student) {
     const now = getLocalTime();
-    // Obtener inicio del día local en formato ISO para filtrado preciso
+    // Obtener inicio del día local para filtrado preciso (medianoche local)
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const localTodayISO = todayStart.toISOString().split('T')[0];
     
     currentStudent.value = student;
     
@@ -474,7 +473,6 @@ const handleScan = async () => {
     let type: 'in' | 'out' = 'in';
 
     if (lastLog) {
-      const lastDate = lastLog.scanned_at.split('T')[0];
       const lastTime = new Date(lastLog.scanned_at).getTime();
       const nowTime = getLocalTime().getTime();
       
@@ -487,7 +485,7 @@ const handleScan = async () => {
         return;
       }
 
-      if (lastDate === localTodayISO) {
+      if (lastTime >= todayStart.getTime()) {
         // Si ya hay registros hoy, alternamos
         type = lastLog.type === 'in' ? 'out' : 'in';
       }

@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\AttendanceSyncController;
 
 use App\Http\Controllers\Api\KioskSetupController;
 use App\Http\Controllers\Api\AdminController;
+use App\Http\Controllers\Api\Admin\TeacherDashboardController;
 
 Route::post('/auth/parent/google', [ParentAuthController::class, 'loginWithGoogle']);
 Route::post('/setup/kiosk/activate', [KioskSetupController::class, 'activate']);
@@ -30,6 +31,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Rutas para el Panel de Administración (Vue Frontend)
     Route::prefix('admin')->group(function () {
         Route::get('/school/time-sync-token', [KioskSetupController::class, 'getTimeSyncToken']);
+
+        Route::get('/classrooms', [\App\Http\Controllers\Api\ClassroomController::class, 'index']);
 
         Route::get('/stats', [AdminController::class, 'dashboardStats']);
         // Schools Management
@@ -57,6 +60,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/schools/{id}/students', [AdminController::class, 'getStudents']);
         Route::get('/students/{id}', [AdminController::class, 'showStudent']);
         Route::get('/schools/{id}/leaderboard', [AdminController::class, 'getLeaderboard']);
+
+        // Kioscos Management
+        Route::get('/kioscos', [\App\Http\Controllers\Api\Admin\KioskController::class, 'index']);
+        Route::get('/kioscos/{id}', [\App\Http\Controllers\Api\Admin\KioskController::class, 'show']);
+        Route::post('/kioscos', [\App\Http\Controllers\Api\Admin\KioskController::class, 'store']);
+        Route::put('/kioscos/{id}', [\App\Http\Controllers\Api\Admin\KioskController::class, 'update']);
+        Route::delete('/kioscos/{id}', [\App\Http\Controllers\Api\Admin\KioskController::class, 'destroy']);
+        Route::post('/kioscos/{id}/link-school', [\App\Http\Controllers\Api\Admin\KioskController::class, 'linkSchool']);
+        Route::post('/kioscos/{id}/unlink-school', [\App\Http\Controllers\Api\Admin\KioskController::class, 'unlinkSchool']);
         // Estudiantes e Imágenes
         Route::get('/students', [AdminController::class, 'getStudents']);
         Route::post('/students', [AdminController::class, 'storeStudent']);
@@ -67,5 +79,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/reports/unclosed', [AdminController::class, 'getUnclosedAttendance']);
         Route::get('/director/stats', [AdminController::class, 'directorDashboardStats']);
+
+        // Teacher Portal
+        Route::get('/teacher/dashboard', [TeacherDashboardController::class, 'getDashboardInfo']);
     });
 });

@@ -70,15 +70,16 @@
             <!-- Grid selector de grupos -->
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 ml-0 sm:ml-7">
               <button 
-                v-for="grupo in mockGrupos" 
+                v-for="grupo in classrooms" 
                 :key="grupo.id"
                 @click="toggleGrupo(grupo.id)"
-                class="px-4 py-3 rounded-xl border text-sm font-bold transition-all text-center"
+                class="px-4 py-3 rounded-xl border text-sm font-bold transition-all text-center flex flex-col items-center justify-center"
                 :class="selectedGrupos.includes(grupo.id) 
                   ? 'bg-blue-50 border-brand-blue/30 text-brand-blue shadow-inner' 
                   : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50 shadow-sm'"
               >
-                {{ grupo.label }}
+                <span>{{ grupo.grade }}º {{ grupo.group_letter }}</span>
+                <span class="text-[10px] font-normal opacity-75 mt-0.5">{{ grupo.school_level }}</span>
               </button>
             </div>
           </div>
@@ -146,26 +147,24 @@ import api from '@/services/api';
 const router = useRouter();
 const route = useRoute();
 
-const mockGrupos = [
-  { id: '1-A', label: '1º A' },
-  { id: '1-B', label: '1º B' },
-  { id: '2-A', label: '2º A' },
-  { id: '2-B', label: '2º B' },
-  { id: '3-A', label: '3º A' },
-  { id: '3-B', label: '3º B' },
-  { id: '4-A', label: '4º A' },
-  { id: '4-B', label: '4º B' },
-];
+interface Classroom {
+  id: number;
+  school_level: string;
+  grade: string;
+  group_letter: string;
+  shift: string;
+}
 
+const classrooms = ref<Classroom[]>([]);
 const name = ref('');
 const email = ref('');
-const selectedGrupos = ref<string[]>([]);
+const selectedGrupos = ref<number[]>([]);
 const accesoActivo = ref(true);
 const isSaving = ref(false);
 const isEditing = ref(false);
 const teacherId = ref<string | null>(null);
 
-const toggleGrupo = (id: string) => {
+const toggleGrupo = (id: number) => {
   if (selectedGrupos.value.includes(id)) {
     selectedGrupos.value = selectedGrupos.value.filter(g => g !== id);
   } else {
@@ -207,6 +206,13 @@ const saveTeacher = async () => {
 };
 
 onMounted(async () => {
+  try {
+    const resClassrooms = await api.get('/admin/classrooms');
+    if (resClassrooms.data.success) {
+      classrooms.value = resClassrooms.data.data;
+    }
+  } catch(e) { console.error('Error fetching classrooms', e); }
+
   const idParam = route.params.id;
   if (idParam && idParam !== 'create') {
     isEditing.value = true;

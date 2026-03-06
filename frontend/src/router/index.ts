@@ -6,6 +6,7 @@ import MonitorActivateView from '../views/MonitorActivateView.vue';
 import AdminLayout from '../views/admin/AdminLayout.vue';
 import DashboardView from '../views/admin/DashboardView.vue';
 import SchoolsView from '../views/admin/SchoolsView.vue';
+import KioscosView from '../views/admin/KioscosView.vue';
 import SchoolDetailView from '../views/admin/SchoolDetailView.vue';
 import SchoolFormView from '../views/admin/SchoolFormView.vue';
 import UsersView from '../views/admin/UsersView.vue';
@@ -52,9 +53,24 @@ const routes: Array<RouteRecordRaw> = [
         component: DashboardView
       },
       {
+        path: 'teacher/dashboard',
+        name: 'TeacherDashboard',
+        component: DashboardView
+      },
+      {
+        path: 'teacher/attendance/:classroomId',
+        name: 'TeacherAttendance',
+        component: () => import('../views/admin/TeacherAttendanceView.vue')
+      },
+      {
         path: 'schools',
         name: 'AdminSchools',
         component: SchoolsView
+      },
+      {
+        path: 'kioscos',
+        name: 'AdminKioscos',
+        component: KioscosView
       },
       {
         path: 'schools/create',

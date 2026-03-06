@@ -48,6 +48,9 @@
           </div>
         </div>
 
+        <!-- Teacher Dashboard -->
+        <TeacherDashboard v-else-if="isTeacher" />
+
         <!-- Director Dashboard (New Premium Design) -->
         <div v-else class="space-y-8 animate-fade-in">
           
@@ -367,7 +370,7 @@
               </div>
               <div class="flex-grow">
                 <h4 class="text-sm font-black text-gray-900 leading-none mb-1">{{ record.student.first_name }} {{ record.student.last_name }}</h4>
-                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{{ record.student.grade }}º {{ record.student.group_letter }} • ID: {{ record.student.enrollment_code }}</p>
+                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{{ record.student.classroom?.grade }}º {{ record.student.classroom?.group_letter }} • ID: {{ record.student.enrollment_code }}</p>
               </div>
               <div class="text-right">
                  <div class="flex items-center gap-1 text-brand-blue mb-0.5">
@@ -391,8 +394,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { IonPage, IonContent, IonIcon, IonRefresher, IonRefresherContent } from '@ionic/vue';
+import TeacherDashboard from '@/components/admin/TeacherDashboard.vue';
 import { 
   trendingUpOutline, business, school, megaphoneOutline, documentTextOutline, peopleOutline, 
   checkmarkCircleOutline, banOutline, personAddOutline, ellipsisVerticalOutline, personOutline,
@@ -403,6 +407,7 @@ import { storage } from '@/services/storage';
 
 const loading = ref(true);
 const isAdmin = ref(false);
+const isTeacher = ref(false);
 const schoolName = ref('');
 const activeSchoolName = ref('');
 const currentUser = ref<any>(null);
@@ -511,7 +516,6 @@ const watchUnclosedModal = (val: boolean) => {
   if (val) fetchUnclosedStudents();
 };
 
-import { watch } from 'vue';
 watch(showUnclosedModal, watchUnclosedModal);
 
 onMounted(async () => {
@@ -519,6 +523,7 @@ onMounted(async () => {
   if (user) {
     currentUser.value = user;
     isAdmin.value = user.role === 'super_admin';
+    isTeacher.value = user.role === 'teacher';
     schoolName.value = user.school?.name || '';
   }
 

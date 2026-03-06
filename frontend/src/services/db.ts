@@ -2,6 +2,7 @@ import Dexie, { Table } from 'dexie';
 
 export interface LocalStudent {
     id: number;
+    school_id: number;
     enrollment_code: string;
     first_name: string;
     last_name: string;

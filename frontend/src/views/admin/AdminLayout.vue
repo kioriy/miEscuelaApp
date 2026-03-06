@@ -66,22 +66,27 @@
               Usuarios
             </router-link>
 
-            <router-link v-if="!isAdmin" to="/admin/teachers" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/teachers') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
+            <router-link v-if="isAdmin" to="/admin/kioscos" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/kioscos') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
+              <ion-icon :icon="storefrontOutline" class="text-xl"></ion-icon>
+              Kioscos
+            </router-link>
+
+            <router-link v-if="!isAdmin && !isTeacher" to="/admin/teachers" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/teachers') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
               <ion-icon :icon="people" class="text-xl"></ion-icon>
               Profesores
             </router-link>
 
-            <router-link v-if="!isAdmin" to="/admin/students" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/students') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
+            <router-link v-if="!isAdmin && !isTeacher" to="/admin/students" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/students') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
               <ion-icon :icon="school" class="text-xl"></ion-icon>
               Estudiantes
             </router-link>
 
-            <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold text-gray-500 hover:bg-gray-50 hover:text-gray-900">
+            <a v-if="!isTeacher" href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold text-gray-500 hover:bg-gray-50 hover:text-gray-900">
               <ion-icon :icon="barChart" class="text-xl"></ion-icon>
               Reportes
             </a>
 
-            <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold text-gray-500 hover:bg-gray-50 hover:text-gray-900">
+            <a v-if="!isTeacher" href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold text-gray-500 hover:bg-gray-50 hover:text-gray-900">
               <ion-icon :icon="settings" class="text-xl"></ion-icon>
               Configuración
             </a>
@@ -133,8 +138,43 @@
 
       <!-- Main Content Area -->
       <!-- Add pt-16 on mobile to account for fixed header, enable overflow-y-auto -->
-      <main class="flex-1 overflow-y-auto w-full h-full relative pt-16 lg:pt-0 bg-gray-50">
-        <ion-router-outlet />
+      <main class="flex-1 overflow-y-auto w-full h-full relative pt-16 lg:pt-0 bg-gray-50 flex flex-col">
+        
+        <!-- Teacher Portal Specific Header (Visible only for teachers on Desktop) -->
+        <div v-if="isTeacher" class="hidden lg:flex items-center justify-between px-10 py-4 bg-white border-b border-gray-100 shrink-0">
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 bg-[#EBF4FF] rounded-2xl flex items-center justify-center text-brand-blue shadow-[0_4px_12px_rgba(59,130,246,0.15)]">
+              <ion-icon :icon="school" class="text-2xl"></ion-icon>
+            </div>
+            <div>
+              <h1 class="text-[22px] font-black text-gray-900 tracking-tight leading-none mb-1">Portal Docente</h1>
+              <p class="text-[13px] text-gray-500 font-semibold tracking-wide">miEscuelaApp</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-6">
+            <div class="flex items-center gap-2 bg-gray-50 px-4 py-2.5 rounded-xl border border-gray-100">
+               <ion-icon :icon="calendar" class="text-gray-400 text-lg"></ion-icon>
+               <span class="text-[14px] font-semibold text-gray-600">{{ formattedDate }}</span>
+            </div>
+            
+            <div class="h-8 w-px bg-gray-200"></div>
+
+            <div class="flex items-center gap-3 cursor-pointer group hover:bg-gray-50 p-1.5 rounded-xl transition-colors">
+              <div class="w-10 h-10 rounded-full bg-orange-100 overflow-hidden shrink-0 border-2 border-white shadow-md group-hover:shadow-lg transition-shadow">
+                <img v-if="userProfile.photo" :src="userProfile.photo" :alt="userProfile.name" class="w-full h-full object-cover">
+                <ion-icon v-else :icon="personOutline" class="text-xl text-gray-500 m-auto mt-2"></ion-icon>
+              </div>
+              <div class="flex flex-col">
+                <span class="text-[14px] font-black text-gray-900 group-hover:text-brand-blue transition-colors">{{ userProfile.name }}</span>
+                <span class="text-[12px] font-semibold text-gray-500">{{ userRoleLabel }}</span>
+              </div>
+              <ion-icon :icon="chevronDownOutline" class="text-gray-400 ml-1 group-hover:text-gray-600"></ion-icon>
+            </div>
+          </div>
+        </div>
+
+        <ion-router-outlet class="flex-1" />
       </main>
     </div>
   </ion-page>
@@ -144,7 +184,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { IonPage, IonIcon, IonRouterOutlet } from '@ionic/vue';
 import { 
-  school, grid, business, people, barChart, settings, time, logOutOutline, menuOutline, closeOutline, personOutline, notifications, calendar
+  school, grid, business, people, barChart, settings, time, logOutOutline, menuOutline, closeOutline, personOutline, notifications, calendar, storefrontOutline, chevronDownOutline
 } from 'ionicons/icons';
 import { useRouter } from 'vue-router';
 import { storage } from '@/services/storage';
@@ -197,6 +237,14 @@ const userRoleLabel = computed(() => {
     case 'parent': return 'Padre / Tutor';
     default: return 'Usuario Registrado';
   }
+});
+
+const isTeacher = computed(() => userProfile.value.role === 'teacher');
+
+const formattedDate = computed(() => {
+  const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' };
+  const dateStr = new Date().toLocaleDateString('es-ES', options);
+  return dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
 });
 
 const logout = async () => {

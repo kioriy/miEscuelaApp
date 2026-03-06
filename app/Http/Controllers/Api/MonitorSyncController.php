@@ -59,7 +59,7 @@ class MonitorSyncController extends Controller
         }
 
         // 3. Buscamos los alumnos
-        $students = Student::where(function ($query) use ($standardSchoolIds, $newSchoolIds, $lastSync) {
+        $students = Student::with('classroom')->where(function ($query) use ($standardSchoolIds, $newSchoolIds, $lastSync) {
             if (!empty($standardSchoolIds)) {
                 $query->whereIn('school_id', $standardSchoolIds)->where('updated_at', '>', $lastSync);
             }
@@ -67,13 +67,24 @@ class MonitorSyncController extends Controller
                 $query->orWhereIn('school_id', $newSchoolIds);
             }
         })
-            ->select('id', 'school_id', 'enrollment_code', 'first_name', 'last_name', 'grade', 'group_letter', 'photo_path', 'photo_hash', 'is_active', 'updated_at')
+            ->select('id', 'school_id', 'classroom_id', 'enrollment_code', 'first_name', 'last_name', 'photo_path', 'photo_hash', 'is_active', 'updated_at')
             ->get();
 
-        // 4. Formateamos las URLs de las fotos de los alumnos
-        $students->transform(function ($student) {
-            $student->photo_url = $student->photo_path ? asset('storage/' . $student->photo_path) : null;
-            return $student;
+        // 4. Formateamos las URLs de las fotos y anexamos grado/grupo
+        $students = $students->map(function ($student) {
+            return [
+                'id' => $student->id,
+                'school_id' => $student->school_id,
+                'enrollment_code' => $student->enrollment_code,
+                'first_name' => $student->first_name,
+                'last_name' => $student->last_name,
+                'grade' => $student->classroom ? $student->classroom->grade : null,
+                'group_letter' => $student->classroom ? $student->classroom->group_letter : null,
+                'photo_url' => $student->photo_path ? asset('storage/' . $student->photo_path) : null,
+                'photo_hash' => $student->photo_hash,
+                'is_active' => $student->is_active,
+                'updated_at' => $student->updated_at,
+            ];
         });
 
         // 5. Buscamos a las personas autorizadas relacionadas a estas escuelas

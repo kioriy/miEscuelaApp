@@ -274,8 +274,8 @@ const activateKiosk = async () => {
     });
 
     if (res.data.success) {
-      await storage.set('auth_token', res.data.token);
-      await storage.set('auth_user', res.data.kiosk);
+      // Store the kiosk token separately from the admin auth_token
+      await storage.set('kiosk_token', res.data.token);
       await storage.set('kiosk_config', res.data.kiosk);
       
       router.push('/monitor');
@@ -291,13 +291,24 @@ const activateKiosk = async () => {
 };
 
 onMounted(async () => {
-  fetchSchools();
+  await fetchSchools();
   setTimeout(() => pinInputs.value[0]?.focus(), 500);
 
   const user = await storage.get('auth_user');
   if (user && (user.role === 'director' || user.role === 'super_admin')) {
     isDirector.value = true;
   }
+
+  const currentSchoolId = await storage.get('current_school_id');
+  if (currentSchoolId) {
+    const found = availableSchools.value.find(s => s.id === currentSchoolId);
+    if (found) {
+      ownerSchoolId.value = found.id;
+    }
+  } else if (availableSchools.value.length === 1) {
+    ownerSchoolId.value = availableSchools.value[0].id;
+  }
+  
 });
 </script>
 

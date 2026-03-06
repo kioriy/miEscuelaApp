@@ -141,7 +141,7 @@
                       </div>
                       <div>
                         <p class="font-black text-gray-900 leading-tight mb-0.5">{{ student.first_name }} {{ student.last_name }}</p>
-                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{{ student.shift }}</p>
+                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{{ student.classroom?.shift }}</p>
                       </div>
                     </div>
                   </td>
@@ -150,7 +150,7 @@
                   </td>
                   <td class="p-5">
                     <span class="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-lg font-black text-[12px] border border-indigo-100">
-                      {{ student.grade }}º {{ student.group_letter }}
+                      {{ student.classroom?.grade }}º {{ student.classroom?.group_letter }}
                     </span>
                   </td>
                   <td class="p-5">
@@ -248,16 +248,16 @@ const photoPercentage = computed(() => {
   return Math.round((studentsWithPhoto.value / students.value.length) * 100);
 });
 
-const grades = computed(() => [...new Set(students.value.map(s => s.grade))].sort());
-const groups = computed(() => [...new Set(students.value.map(s => s.group_letter))].sort());
-const uniqueGroups = computed(() => [...new Set(students.value.map(s => `${s.grade}${s.group_letter}`))]);
+const grades = computed(() => [...new Set(students.value.filter(s => s.classroom).map(s => s.classroom.grade))].sort());
+const groups = computed(() => [...new Set(students.value.filter(s => s.classroom).map(s => s.classroom.group_letter))].sort());
+const uniqueGroups = computed(() => [...new Set(students.value.filter(s => s.classroom).map(s => `${s.classroom.grade}${s.classroom.group_letter}`))]);
 
 const filteredStudents = computed(() => {
   return students.value.filter(s => {
     const nameMatch = `${s.first_name || ''} ${s.last_name || ''}`.toLowerCase().includes((searchQuery.value || '').toLowerCase());
     const codeMatch = String(s.enrollment_code || '').toLowerCase().includes((searchQuery.value || '').toLowerCase());
-    const gradeMatch = !filterGrade.value || String(s.grade) === String(filterGrade.value);
-    const groupMatch = !filterGroup.value || String(s.group_letter) === String(filterGroup.value);
+    const gradeMatch = !filterGrade.value || (s.classroom && String(s.classroom.grade) === String(filterGrade.value));
+    const groupMatch = !filterGroup.value || (s.classroom && String(s.classroom.group_letter) === String(filterGroup.value));
     return (nameMatch || codeMatch) && gradeMatch && groupMatch;
   });
 });

@@ -423,7 +423,19 @@ class AdminController extends Controller
                     continue;
                 }
 
-                Student::create(array_merge($normalizedRow, ['school_id' => $school->id]));
+                $classroom = \App\Models\Classroom::firstOrCreate([
+                    'school_id' => $school->id,
+                    'school_level' => $normalizedRow['school_level'],
+                    'grade' => $normalizedRow['grade'],
+                    'group_letter' => $normalizedRow['group_letter'],
+                    'shift' => $normalizedRow['shift'],
+                ]);
+
+                $studentData = array_diff_key($normalizedRow, array_flip(['school_level', 'grade', 'group_letter', 'shift']));
+                $studentData['school_id'] = $school->id;
+                $studentData['classroom_id'] = $classroom->id;
+
+                Student::create($studentData);
                 $results['imported']++;
             }
 
@@ -446,11 +458,20 @@ class AdminController extends Controller
     public function getLeaderboard(Request $request, $school_id = null)
     {
         $schoolId = $school_id ?: $this->getSchoolId($request);
+
+        $school = \App\Models\School::find($schoolId);
+        $timezone = $school && $school->timezone ? $school->timezone : 'America/Mexico_City';
+
         // Top 5 alumnos con más asistencias hoy
         $localStart = $request->query('local_start');
-        $today = $localStart ? \Illuminate\Support\Carbon::parse($localStart)->toDateTimeString() : now()->startOfDay();
 
-        $leaderboard = \App\Models\AttendanceLog::where('school_id', $school_id)
+        if ($localStart) {
+            $today = \Illuminate\Support\Carbon::parse(substr($localStart, 0, 10), $timezone)->startOfDay()->setTimezone('UTC')->toDateTimeString();
+        } else {
+            $today = now($timezone)->startOfDay()->setTimezone('UTC')->toDateTimeString();
+        }
+
+        $leaderboard = \App\Models\AttendanceLog::where('school_id', $schoolId)
             ->where('scanned_at', '>=', $today)
             ->where('type', 'in')
             ->select('student_id', DB::raw('count(*) as logs_count'))
@@ -458,8 +479,8 @@ class AdminController extends Controller
             ->orderByDesc('logs_count')
             ->limit(5)
             ->with(['student' => function ($q) {
-                $q->select('id', 'first_name', 'last_name', 'enrollment_code', 'grade', 'group_letter');
-            }])
+                $q->select('id', 'first_name', 'last_name', 'enrollment_code', 'classroom_id');
+            }, 'student.classroom'])
             ->get();
 
         return response()->json([
@@ -476,9 +497,19 @@ class AdminController extends Controller
             return response()->json(['success' => false, 'message' => 'No se ha seleccionado una escuela.'], 403);
         }
 
+        $school = \App\Models\School::find($schoolId);
+        $timezone = $school && $school->timezone ? $school->timezone : 'America/Mexico_City';
+
         $localStart = $request->query('local_start');
-        $today = $localStart ? \Illuminate\Support\Carbon::parse($localStart)->toDateTimeString() : now()->startOfDay();
-        $yesterday = \Illuminate\Support\Carbon::parse($today)->subDay()->toDateTimeString();
+        // Fix: JS toISOString() sends UTC. Use it just for the date part, or default to backend's startOfDay.
+        if ($localStart) {
+            $localTodayStart = \Illuminate\Support\Carbon::parse(substr($localStart, 0, 10), $timezone)->startOfDay();
+        } else {
+            $localTodayStart = now($timezone)->startOfDay();
+        }
+
+        $today = $localTodayStart->copy()->setTimezone('UTC')->toDateTimeString();
+        $yesterday = $localTodayStart->copy()->subDay()->setTimezone('UTC')->toDateTimeString();
 
         // 1. Basic Counts
         $totalStudents = Student::where('school_id', $schoolId)->count();
@@ -501,7 +532,7 @@ class AdminController extends Controller
         $prevRate = $totalStudents > 0 ? round(($attendanceYesterday / $totalStudents) * 100) : 0;
 
         // 3. Entry Summary (Mocking "Late" for now until thresholds exist)
-        $lateThreshold = \Illuminate\Support\Carbon::parse($today)->addHours(8); // 8:00 AM
+        $lateThreshold = $localTodayStart->copy()->addHours(8)->setTimezone('UTC')->toDateTimeString(); // 8:00 AM
 
         $onTime = \App\Models\AttendanceLog::where('school_id', $schoolId)
             ->where('scanned_at', '>=', $today)
@@ -514,9 +545,9 @@ class AdminController extends Controller
         $absent = $totalStudents - $attendanceToday;
 
         // 4. Attendance by Grade/Group
-        $groupStats = Student::where('school_id', $schoolId)
-            ->select('grade', 'group_letter', DB::raw('count(*) as total'))
-            ->groupBy('grade', 'group_letter')
+        $groupStats = \App\Models\Classroom::where('school_id', $schoolId)
+            ->withCount('students as total')
+            ->having('total', '>', 0)
             ->get();
 
         foreach ($groupStats as $group) {
@@ -524,8 +555,7 @@ class AdminController extends Controller
                 ->where('scanned_at', '>=', $today)
                 ->where('type', 'in')
                 ->whereHas('student', function ($q) use ($group) {
-                    $q->where('grade', $group->grade)
-                        ->where('group_letter', $group->group_letter);
+                    $q->where('classroom_id', $group->id);
                 })
                 ->distinct('student_id')
                 ->count();
@@ -544,6 +574,7 @@ class AdminController extends Controller
             $join->on('attendance_logs.student_id', '=', 'latest_logs.student_id')
                 ->on('attendance_logs.scanned_at', '=', 'latest_logs.last_scanned_at');
         })
+            ->where('attendance_logs.school_id', $schoolId)
             ->where('attendance_logs.type', 'in')
             ->count();
 
@@ -582,12 +613,18 @@ class AdminController extends Controller
     }
     public function getUnclosedAttendance(Request $request)
     {
-        $school_id = $request->user()->school_id;
+        $school_id = $this->getSchoolId($request) ?: $request->user()->school_id;
+        $school = \App\Models\School::find($school_id);
+        $timezone = $school && $school->timezone ? $school->timezone : 'America/Mexico_City';
+
         $localStart = $request->query('local_start');
 
         // Si no mandan local_start, intentamos deducirlo solo por fecha para el subquery
-        $todayDate = $localStart ? \Illuminate\Support\Carbon::parse($localStart)->toDateString() : now()->toDateString();
-        $todayDateTime = $localStart ? \Illuminate\Support\Carbon::parse($localStart)->toDateTimeString() : now()->startOfDay()->toDateTimeString();
+        if ($localStart) {
+            $todayDateTime = \Illuminate\Support\Carbon::parse(substr($localStart, 0, 10), $timezone)->startOfDay()->setTimezone('UTC')->toDateTimeString();
+        } else {
+            $todayDateTime = now($timezone)->startOfDay()->setTimezone('UTC')->toDateTimeString();
+        }
 
         $latestLogsSubquery = \App\Models\AttendanceLog::select('student_id', DB::raw('MAX(scanned_at) as last_scanned_at'))
             ->where('school_id', $school_id)
@@ -598,7 +635,7 @@ class AdminController extends Controller
             $join->on('attendance_logs.student_id', '=', 'latest_logs.student_id')
                 ->on('attendance_logs.scanned_at', '=', 'latest_logs.last_scanned_at');
         })
-            ->with('student')
+            ->with(['student', 'student.classroom'])
             ->where('attendance_logs.type', 'in')
             ->where('attendance_logs.school_id', $school_id)
             ->get();
@@ -616,7 +653,7 @@ class AdminController extends Controller
     public function getStudents(Request $request)
     {
         $schoolId = $this->getSchoolId($request);
-        $query = \App\Models\Student::where('school_id', $schoolId);
+        $query = \App\Models\Student::with('classroom')->where('school_id', $schoolId);
 
         if ($request->has('search')) {
             $search = $request->search;
@@ -650,10 +687,21 @@ class AdminController extends Controller
             'school_level' => 'required|string',
             'grade' => 'required|string',
             'group_letter' => 'required|string',
+            'shift' => 'nullable|string',
         ]);
 
-        $data = $request->except(['photo_url', 'photo']);
-        $data['school_id'] = $this->getSchoolId($request);
+        $schoolId = $this->getSchoolId($request);
+        $classroom = \App\Models\Classroom::firstOrCreate([
+            'school_id' => $schoolId,
+            'school_level' => $request->school_level,
+            'grade' => $request->grade,
+            'group_letter' => $request->group_letter,
+            'shift' => $request->shift ?? 'matutino',
+        ]);
+
+        $data = $request->except(['photo_url', 'photo', 'school_level', 'grade', 'group_letter', 'shift']);
+        $data['school_id'] = $schoolId;
+        $data['classroom_id'] = $classroom->id;
 
         if ($request->hasFile('photo')) {
             $path = $request->file('photo')->store('students/photos', 'public');
@@ -672,7 +720,7 @@ class AdminController extends Controller
 
     public function showStudent(Request $request, $id)
     {
-        $student = \App\Models\Student::where('school_id', $this->getSchoolId($request))->findOrFail($id);
+        $student = \App\Models\Student::with('classroom')->where('school_id', $this->getSchoolId($request))->findOrFail($id);
         $student->photo_url = $student->photo_path ? asset('storage/' . $student->photo_path) : null;
 
         return response()->json([
@@ -689,9 +737,23 @@ class AdminController extends Controller
             'first_name' => 'required|string|max:100',
             'last_name' => 'required|string|max:100',
             'enrollment_code' => 'required|string|unique:students,enrollment_code,' . $id . ',id,school_id,' . $request->user()->school_id,
+            'school_level' => 'required|string',
+            'grade' => 'required|string',
+            'group_letter' => 'required|string',
+            'shift' => 'nullable|string',
         ]);
 
-        $data = $request->except(['photo_url', 'photo']);
+        $schoolId = $this->getSchoolId($request);
+        $classroom = \App\Models\Classroom::firstOrCreate([
+            'school_id' => $schoolId,
+            'school_level' => $request->school_level,
+            'grade' => $request->grade,
+            'group_letter' => $request->group_letter,
+            'shift' => $request->shift ?? 'matutino',
+        ]);
+
+        $data = $request->except(['photo_url', 'photo', 'school_level', 'grade', 'group_letter', 'shift']);
+        $data['classroom_id'] = $classroom->id;
 
         if ($request->hasFile('photo')) {
             // Delete old photo if exists

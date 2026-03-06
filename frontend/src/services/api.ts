@@ -14,7 +14,13 @@ const api = axios.create({
 api.interceptors.request.use(
     async (config) => {
         // Intentar leer el token
-        const val = await storage.get('auth_token');
+        const authVal = await storage.get('auth_token');
+        const kioskVal = await storage.get('kiosk_token');
+
+        // If the request is for the monitor/kiosk sync endpoints, prefer kiosk_token
+        const isKioskEndpoint = config.url?.includes('/sync/monitor') || config.url?.includes('/setup/kiosk/apply-time-offset');
+        const val = isKioskEndpoint && kioskVal ? kioskVal : authVal;
+
         if (val) {
             config.headers.Authorization = `Bearer ${val}`;
         }

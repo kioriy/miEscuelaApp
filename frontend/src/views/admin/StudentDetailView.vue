@@ -59,11 +59,11 @@
                   <div class="space-y-4">
                     <div>
                       <p class="text-[11px] font-bold opacity-60 mb-1">TURNO</p>
-                      <p class="font-black tracking-tight capitalize">{{ student.shift || 'Sin asignar' }}</p>
+                      <p class="font-black tracking-tight capitalize">{{ student.classroom?.shift || 'Sin asignar' }}</p>
                     </div>
                     <div>
                       <p class="text-[11px] font-bold opacity-60 mb-1">NIVEL</p>
-                      <p class="font-black tracking-tight">{{ student.school_level || 'Sin definir' }}</p>
+                      <p class="font-black tracking-tight">{{ student.classroom?.school_level || 'Sin definir' }}</p>
                     </div>
                     <div>
                       <p class="text-[11px] font-bold opacity-60 mb-1">FECHA DE REGISTRO</p>
@@ -112,22 +112,22 @@
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
                   <div class="bg-gray-50 p-5 rounded-2xl text-center">
                     <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">Nivel</p>
-                    <p class="text-xl font-black text-gray-900">{{ student.school_level || '—' }}</p>
+                    <p class="text-xl font-black text-gray-900">{{ student.classroom?.school_level || '—' }}</p>
                   </div>
                   <div class="bg-gray-50 p-5 rounded-2xl text-center">
                     <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">Grado</p>
-                    <p class="text-xl font-black text-gray-900">{{ student.grade }}º</p>
+                    <p class="text-xl font-black text-gray-900">{{ student.classroom?.grade }}º</p>
                   </div>
                   <div class="bg-gray-50 p-5 rounded-2xl text-center">
                     <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">Grupo</p>
-                    <p class="text-xl font-black text-gray-900">{{ student.group_letter }}</p>
+                    <p class="text-xl font-black text-gray-900">{{ student.classroom?.group_letter }}</p>
                   </div>
                 </div>
 
                 <div class="bg-indigo-50 px-5 py-4 rounded-2xl border border-indigo-100">
                   <div class="flex items-center gap-3">
                     <span class="text-[12px] font-black text-indigo-600 uppercase tracking-widest">Turno:</span>
-                    <span class="font-black text-indigo-700 capitalize">{{ student.shift || 'Sin asignar' }}</span>
+                    <span class="font-black text-indigo-700 capitalize">{{ student.classroom?.shift || 'Sin asignar' }}</span>
                   </div>
                 </div>
               </section>
