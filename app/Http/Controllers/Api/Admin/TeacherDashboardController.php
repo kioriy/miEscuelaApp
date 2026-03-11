@@ -100,9 +100,6 @@ class TeacherDashboardController extends Controller
         $late = 0;
         $absent = 0;
 
-        // Asumiendo que las 8:01 AM es retardo
-        $lateTimeThreshold = $localTodayStart->copy()->setHour(8)->setMinute(1);
-
         $studentsData = [];
         $recentActivity = [];
 
@@ -115,14 +112,19 @@ class TeacherDashboardController extends Controller
                 $studentLogs = $logs->get($student->id);
                 $firstLog = $studentLogs->first(); // Primer scan del día (entrada)
 
-                $scanTime = Carbon::parse($firstLog->scanned_at, 'UTC')->setTimezone($timezone);
+                // The model cast already gives us a Carbon object.
+                // We just ensure it's shifted to the school's specific timezone for display.
+                $scanTime = $firstLog->scanned_at->copy()->setTimezone($timezone);
 
-                if ($scanTime->greaterThanOrEqualTo($lateTimeThreshold)) {
-                    $status = 'late';
-                    $late++;
-                } else {
-                    $status = 'present';
+                $status = $firstLog->status;
+
+                if (in_array($status, ['present', 'late', 'excused'])) {
                     $present++;
+                    if ($status === 'late') {
+                        $late++;
+                    }
+                } else if ($status === 'absent') {
+                    $absent++;
                 }
                 $timeLabel = $scanTime->format('h:i A');
 

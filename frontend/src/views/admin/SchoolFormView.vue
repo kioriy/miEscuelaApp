@@ -185,6 +185,28 @@
                   </div>
                 </div>
 
+                <!-- QR Scan Type Row -->
+                <div class="grid grid-cols-1 sm:grid-cols-1 gap-6 mt-6">
+                  <div>
+                    <label class="block text-sm font-bold text-gray-800 mb-2">Tipo de Escaneo QR (Kiosco)</label>
+                    <div class="relative">
+                      <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+                      </div>
+                      <select v-model="form.qr_scan_type" class="w-full pl-11 pr-10 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all text-gray-700 bg-white appearance-none shadow-sm cursor-pointer">
+                        <option value="raw_id">Solo ID (Ej: 1001)</option>
+                        <option value="hash_split">URL con Hash (Ej: edumag.app/#1001)</option>
+                        <option value="query_param">URL con Parámetro (Ej: edumag.app/?id=1001)</option>
+                        <option value="sep_url">URL SEP Jalisco (Ej: .../qrec/218731/...)</option>
+                      </select>
+                      <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                      </div>
+                    </div>
+                    <p class="text-[11px] text-gray-500 mt-2 ml-1">Define el formato de lectura de QR que espera el Kiosco para interpretar el ID del estudiante.</p>
+                  </div>
+                </div>
+
               </div>
             </div>
 
@@ -315,6 +337,7 @@ const form = ref({
   maxKiosks: 1,
   entry_time: '08:00',
   tolerance_minutes: 15,
+  qr_scan_type: 'raw_id',
   logo_base64: '' // We will send the image as base64 for simplicity
 });
 
@@ -385,6 +408,7 @@ onMounted(async () => {
         form.value.isActive = data.is_active === 1 || data.is_active === true;
         form.value.entry_time = data.entry_time ? data.entry_time.substring(0, 5) : '08:00';
         form.value.tolerance_minutes = data.tolerance_minutes ?? 15;
+        form.value.qr_scan_type = data.qr_scan_type || 'raw_id';
         // The kiosks amount might be locked after creation, so we just display the count
         form.value.maxKiosks = data.owned_kiosks?.length || 1;
         

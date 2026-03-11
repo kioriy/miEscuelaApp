@@ -143,7 +143,8 @@ class KioskSetupController extends Controller
                     return [
                         'id' => $s->id,
                         'name' => $s->name,
-                        'logo_url' => $s->logo_path ? asset('storage/' . $s->logo_path) : null
+                        'logo_url' => $s->logo_path ? asset('storage/' . $s->logo_path) : null,
+                        'qr_scan_type' => $s->qr_scan_type
                     ];
                 })
             ]

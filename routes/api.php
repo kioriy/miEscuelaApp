@@ -17,9 +17,11 @@ Route::get('/setup/kiosk/schools', [KioskSetupController::class, 'getSchoolsForA
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/setup/kiosk/status', [KioskSetupController::class, 'getStatus']);
-    Route::get('/parent/students', function (Request $request) {
-        return response()->json(['message' => 'Pronto listaremos los hijos del usuario: ' . $request->user()->name]);
-    });
+    // Parent Portal
+    Route::get('/parent/dashboard', [\App\Http\Controllers\Api\ParentDashboardController::class, 'index']);
+    Route::get('/parent/students', [\App\Http\Controllers\Api\ParentDashboardController::class, 'getStudents']);
+    Route::post('/parent/authorized-persons', [\App\Http\Controllers\Api\ParentDashboardController::class, 'storeAuthorizedPerson']);
+    Route::get('/parent/history', [\App\Http\Controllers\Api\ParentDashboardController::class, 'getHistory']);
 
     // Rutas para el Kiosco / Monitor
     Route::get('/sync/monitor/school', [MonitorSyncController::class, 'getSchoolInfo']);
@@ -82,5 +84,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Teacher Portal
         Route::get('/teacher/dashboard', [TeacherDashboardController::class, 'getDashboardInfo']);
+        Route::get('/teacher/attendance/{classroomId}/pending', [\App\Http\Controllers\Api\Admin\TeacherAttendanceController::class, 'getPending']);
+        Route::post('/teacher/attendance/{classroomId}/mark', [\App\Http\Controllers\Api\Admin\TeacherAttendanceController::class, 'markAttendance']);
+        Route::post('/teacher/attendance/{classroomId}/finalize', [\App\Http\Controllers\Api\Admin\TeacherAttendanceController::class, 'finalizeAttendance']);
+
+        // Teacher Messaging
+        Route::get('/teacher/messaging/context', [\App\Http\Controllers\Api\Teacher\MessagingController::class, 'getTeacherContext']);
+        Route::get('/teacher/messaging/history', [\App\Http\Controllers\Api\Teacher\MessagingController::class, 'getSentMessages']);
+        Route::post('/teacher/messaging/send', [\App\Http\Controllers\Api\Teacher\MessagingController::class, 'sendMessage']);
     });
 });

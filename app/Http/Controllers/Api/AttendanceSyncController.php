@@ -83,12 +83,12 @@ class AttendanceSyncController extends Controller
             ->toArray();
 
         $recordsToInsert = [];
-        $now = now()->toDateTimeString(); // Momento exacto en que llega al servidor
+        $now = now(); // Native Carbon object
 
         // 3. Preparamos los datos
         foreach ($logs as $log) {
-            // Convertimos la fecha ISO (JS) a formato MySQL
-            $scannedAt = \Illuminate\Support\Carbon::parse($log['scanned_at'])->toDateTimeString();
+            // Convertimos la fecha ISO (JS) a objeto Carbon
+            $scannedAt = \Illuminate\Support\Carbon::parse($log['scanned_at']);
 
             // Buscamos a cuál de las sedes pertenece este alumno; si no se encuentra (borrado), usamos el fallback
             $resolvedSchoolId = $studentSchools[$log['student_id']] ?? $fallbackSchoolId;

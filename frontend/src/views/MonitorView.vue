@@ -439,16 +439,55 @@ const handleScan = async () => {
     return;
   }
 
-  const matricula = rawVal.toUpperCase();
+  // Obtenemos los posibles IDs dependiendo de las configuraciones de las escuelas vinculadas
+  let possibleIds: string[] = [];
+  
+  // Extraemos la logica dependiendo del tipo configurado
+  const parseQR = (rawCode: string, scanType: string): string => {
+    switch(scanType) {
+      case 'hash_split':
+        return rawCode.includes('#') ? rawCode.split('#')[1] : rawCode;
+      case 'query_param':
+        try {
+          const urlStr = rawCode.startsWith('http') ? rawCode : 'http://' + rawCode;
+          const url = new URL(urlStr);
+          return url.searchParams.get('id') || rawCode;
+        } catch(e) { return rawCode; }
+      case 'sep_url':
+        // Ej: https://site.com/qrec/218731/qwerty
+        const cleanStr = rawCode.replace(/\/+$/, '');
+        const parts = cleanStr.split('/');
+        return parts.length >= 2 ? parts[parts.length - 2] : rawCode;
+      case 'raw_id':
+      default:
+        return rawCode;
+    }
+  };
 
-  console.log(`[Scan] Buscando matrícula: ${matricula} ...`);
-  // 1. Buscar alumno en la base de datos local (Dexie)
-  const student = await db.students.get({ enrollment_code: matricula });
+  // Iterar por cada escuela configurada en el quiosco
+  if (schoolInfo.value.schools && schoolInfo.value.schools.length > 0) {
+    schoolInfo.value.schools.forEach((s: any) => {
+      const scanType = s.qr_scan_type || 'raw_id';
+      const parsed = parseQR(rawVal, scanType).toUpperCase().trim();
+      if (!possibleIds.includes(parsed)) {
+          possibleIds.push(parsed);
+      }
+    });
+  } else {
+    // Fallback: solo enviar directo
+    possibleIds.push(rawVal.toUpperCase());
+  }
+
+  console.log(`[Scan] Raw: ${rawVal} | Intentando las matrículas: ${possibleIds.join(', ')} ...`);
+  
+  // 1. Buscar alumno en la base de datos local (Dexie) comprobando nuestra lista de possibleIds (el `where` anyOf es excelente para arrays)
+  const studentResult = await db.students.where('enrollment_code').anyOf(possibleIds).toArray();
+  const student = studentResult.length > 0 ? studentResult[0] : null;
 
   if (student) {
     console.log(`[Scan] Alumno encontrado localmente: ${student.first_name} (ID: ${student.id}, Escuela: ${student.school_id})`);
   } else {
-    console.warn(`[Scan] Matrícula no encontrada en Dexie: ${matricula}`);
+    console.warn(`[Scan] Matrícula no encontrada en Dexie: ${rawVal}`);
   }
 
   // Limpiar errores previos

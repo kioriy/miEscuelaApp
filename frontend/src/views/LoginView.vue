@@ -174,6 +174,8 @@ const onGoogleCallback = async (response: any) => {
       
       if (apiResponse.data.user.role === 'super_admin' || apiResponse.data.user.role === 'director' || apiResponse.data.user.role === 'teacher') {
          router.push('/admin/dashboard'); 
+      } else if (apiResponse.data.user.role === 'parent') {
+         router.push('/parent/dashboard');
       } else {
          router.push('/monitor');
       }

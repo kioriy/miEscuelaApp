@@ -15,7 +15,7 @@
 
         <!-- Refresh Button -->
         <button 
-          @click="fetchDashboardData(currentClass.id || undefined)" 
+          @click="refreshDashboard" 
           class="w-[46px] h-[46px] flex-shrink-0 flex items-center justify-center bg-white hover:bg-gray-50 border border-gray-200 text-gray-500 hover:text-brand-blue rounded-xl transition-all" 
           title="Actualizar datos"
           :disabled="loading"
@@ -218,38 +218,45 @@
       <!-- Right Column: Quick Message & Activity -->
       <div class="xl:w-1/3 flex flex-col gap-6">
         
-        <!-- Quick Message -->
+        <!-- Sent Messages History -->
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col h-full">
-           <div class="flex items-center gap-2 mb-6">
-              <div class="w-8 h-8 rounded-lg bg-blue-50 text-brand-blue flex items-center justify-center">
-                 <ion-icon :icon="megaphoneOutline" class="text-lg"></ion-icon>
-              </div>
-              <h3 class="text-lg font-black text-gray-900 tracking-tight">Comunicado Rápido</h3>
-           </div>
-
-           <div class="space-y-4 flex-grow">
-              <div>
-                 <label class="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Tipo</label>
-                 <select class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-blue/50">
-                    <option>Anuncio General</option>
-                    <option>Recordatorio de Tarea</option>
-                    <option>Aviso Urgente</option>
-                 </select>
-              </div>
-              <div>
-                 <label class="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Mensaje</label>
-                 <textarea rows="4" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 resize-none" placeholder="Escriba su mensaje aquí..."></textarea>
-              </div>
+           <div class="flex items-center justify-between mb-6">
               <div class="flex items-center gap-2">
-                 <input type="checkbox" id="urgent" class="rounded border-gray-300 text-brand-blue focus:ring-brand-blue">
-                 <label for="urgent" class="text-sm font-medium text-gray-600">Marcar urgente</label>
+                 <div class="w-8 h-8 rounded-lg bg-blue-50 text-brand-blue flex items-center justify-center">
+                    <ion-icon :icon="megaphoneOutline" class="text-lg"></ion-icon>
+                 </div>
+                 <h3 class="text-lg font-black text-gray-900 tracking-tight">Historial de Envío</h3>
               </div>
+              <router-link to="/admin/teacher/messaging" class="text-[11px] font-black text-brand-blue uppercase hover:underline">Nuevo Aviso</router-link>
            </div>
 
-           <button class="w-full mt-6 bg-brand-blue hover:bg-blue-600 text-white font-black py-3 rounded-xl shadow-md transition-all flex items-center justify-center gap-2">
-              <ion-icon :icon="sendOutline"></ion-icon>
-              Enviar a Padres
-           </button>
+           <div v-if="historyLoading" class="flex-grow flex items-center justify-center py-12">
+              <div class="w-6 h-6 border-2 border-brand-blue border-t-transparent rounded-full animate-spin"></div>
+           </div>
+
+           <div v-else-if="messageHistory.length === 0" class="flex-grow flex flex-col items-center justify-center py-12 px-6 text-center">
+              <div class="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center text-gray-300 mb-4">
+                 <ion-icon :icon="mailOutline" class="text-2xl"></ion-icon>
+              </div>
+              <p class="text-xs font-bold text-gray-400 uppercase tracking-widest leading-relaxed">No has enviado<br>avisos todavía.</p>
+           </div>
+
+           <div v-else class="space-y-4 flex-grow overflow-y-auto max-h-[400px] pr-2 custom-scrollbar">
+              <div v-for="msg in messageHistory" :key="msg.id" class="p-4 rounded-xl border border-gray-50 bg-gray-50/30 hover:bg-gray-50 transition-colors group">
+                 <div class="flex justify-between items-start mb-2">
+                    <span class="text-[10px] font-black text-brand-blue uppercase tracking-tighter bg-blue-50 px-1.5 py-0.5 rounded">Para: {{ msg.recipients }}</span>
+                    <span class="text-[10px] font-bold text-gray-400">{{ msg.time_ago }}</span>
+                 </div>
+                 <h4 class="text-sm font-black text-gray-900 mb-1 group-hover:text-brand-blue transition-colors truncate">{{ msg.title }}</h4>
+                 <p class="text-[11px] text-gray-500 line-clamp-2 leading-relaxed">{{ msg.content }}</p>
+                 <div class="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
+                    <span class="text-[9px] font-bold text-gray-400 italic">Enviado: {{ msg.created_at }}</span>
+                    <button class="text-[10px] font-black text-gray-400 hover:text-brand-blue flex items-center gap-1">
+                       Detalle <ion-icon :icon="chevronForwardOutline"></ion-icon>
+                    </button>
+                 </div>
+              </div>
+           </div>
         </div>
 
         <!-- Recent Activity -->
@@ -300,9 +307,9 @@ import {
   checkmarkOutline, timeOutline, closeOutline, filterOutline, 
   ellipsisVerticalOutline, createOutline, chatbubbleEllipsesOutline,
   megaphoneOutline, sendOutline, checkmarkCircleOutline, mailOutline,
-  documentTextOutline, chevronDownOutline, refreshOutline
+  documentTextOutline, chevronDownOutline, refreshOutline, chevronForwardOutline
 } from 'ionicons/icons';
-import { IonIcon } from '@ionic/vue';
+import { IonIcon, toastController } from '@ionic/vue';
 import api from '@/services/api';
 
 const loading = ref(true);
@@ -324,6 +331,24 @@ const stats = ref({
 
 const students = ref<any[]>([]);
 const recentActivity = ref<any[]>([]);
+const messageHistory = ref<any[]>([]);
+const historyLoading = ref(false);
+
+const showToast = async (message: string, color: 'success' | 'danger' | 'warning' = 'success') => {
+  const toast = await toastController.create({
+    message,
+    duration: 3000,
+    position: 'bottom',
+    color,
+    buttons: [
+      {
+        text: 'Cerrar',
+        role: 'cancel'
+      }
+    ]
+  });
+  await toast.present();
+};
 
 const formatStatus = (status: string) => {
   const map: Record<string, string> = {
@@ -358,19 +383,49 @@ const fetchDashboardData = async (classroomId?: number) => {
     }
   } catch (error) {
     console.error('Error fetching teacher dashboard data:', error);
+    showToast('Error al cargar datos del panel', 'danger');
   } finally {
     loading.value = false;
   }
 };
 
-const selectClass = (classroomId: number) => {
+const refreshDashboard = async () => {
+  try {
+    await Promise.all([
+      fetchDashboardData(currentClass.value.id || undefined),
+      fetchMessageHistory()
+    ]);
+    showToast('Datos actualizados');
+  } catch (error) {
+    showToast('Error al actualizar datos', 'danger');
+  }
+};
+
+const selectClass = async (classroomId: number) => {
   isClassDropdownOpen.value = false;
   if (currentClass.value.id !== classroomId) {
-    fetchDashboardData(classroomId);
+    await fetchDashboardData(classroomId);
+    fetchMessageHistory(); // History is global, but good to refresh it when switching context
+  }
+};
+
+const fetchMessageHistory = async () => {
+  try {
+    historyLoading.value = true;
+    const res = await api.get('/admin/teacher/messaging/history');
+    if (res.data.success) {
+      messageHistory.value = res.data.data;
+    }
+  } catch (error) {
+    console.error('Error fetching message history:', error);
+    showToast('Error al cargar historial de mensajes', 'danger');
+  } finally {
+    historyLoading.value = false;
   }
 };
 
 onMounted(() => {
   fetchDashboardData();
+  fetchMessageHistory();
 });
 </script>

@@ -55,6 +55,11 @@
               <ion-icon :icon="grid" class="text-xl"></ion-icon>
               Panel Principal
             </router-link>
+
+            <router-link v-if="isTeacher" to="/admin/teacher/messaging" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/messaging') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
+              <ion-icon :icon="chatbubbleOutline" class="text-xl"></ion-icon>
+              Mensajes
+            </router-link>
             
             <router-link v-if="isAdmin" to="/admin/schools" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/schools') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
               <ion-icon :icon="business" class="text-xl"></ion-icon>
@@ -184,7 +189,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { IonPage, IonIcon, IonRouterOutlet } from '@ionic/vue';
 import { 
-  school, grid, business, people, barChart, settings, time, logOutOutline, menuOutline, closeOutline, personOutline, notifications, calendar, storefrontOutline, chevronDownOutline
+  school, grid, business, people, barChart, settings, time, logOutOutline, menuOutline, closeOutline, personOutline, notifications, calendar, storefrontOutline, chevronDownOutline, chatbubbleOutline
 } from 'ionicons/icons';
 import { useRouter } from 'vue-router';
 import { storage } from '@/services/storage';

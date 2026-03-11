@@ -156,7 +156,8 @@ class MonitorSyncController extends Controller
                         return [
                             'id' => $s->id,
                             'name' => $s->name,
-                            'logo_url' => $s->logo_path ? asset('storage/' . $s->logo_path) : null
+                            'logo_url' => $s->logo_path ? asset('storage/' . $s->logo_path) : null,
+                            'qr_scan_type' => $s->qr_scan_type
                         ];
                     })
                 ]
@@ -181,7 +182,8 @@ class MonitorSyncController extends Controller
                 'schools' => [[
                     'id' => $school->id,
                     'name' => $school->name,
-                    'logo_url' => $school->logo_path ? asset('storage/' . $school->logo_path) : null
+                    'logo_url' => $school->logo_path ? asset('storage/' . $school->logo_path) : null,
+                    'qr_scan_type' => $school->qr_scan_type
                 ]]
             ]
         ]);

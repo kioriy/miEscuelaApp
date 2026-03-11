@@ -39,6 +39,24 @@ const routes: Array<RouteRecordRaw> = [
     component: MonitorActivateView
   },
   {
+    path: '/parent/dashboard',
+    name: 'ParentDashboard',
+    component: () => import('../views/parent/ParentDashboardView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/parent/authorized-persons/create',
+    name: 'AuthorizedPersonCreate',
+    component: () => import('../views/parent/AuthorizedPersonFormView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/parent/history',
+    name: 'ParentHistory',
+    component: () => import('../views/parent/ParentHistoryView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/admin',
     component: AdminLayout,
     meta: { requiresAuth: true },
@@ -61,6 +79,11 @@ const routes: Array<RouteRecordRaw> = [
         path: 'teacher/attendance/:classroomId',
         name: 'TeacherAttendance',
         component: () => import('../views/admin/TeacherAttendanceView.vue')
+      },
+      {
+        path: 'teacher/messaging',
+        name: 'TeacherMessaging',
+        component: () => import('../views/admin/TeacherMessagingView.vue')
       },
       {
         path: 'schools',
@@ -174,7 +197,19 @@ router.beforeEach(async (to, from, next) => {
 
   // Si ya está autenticado e intenta ir al login, mandarlo al dashboard
   if (to.path === '/login' && isAuthenticated) {
-    return next('/admin/dashboard');
+    const userStr = await storage.get('auth_user');
+    let role = 'guest';
+    if (userStr) {
+      try { role = (typeof userStr === 'string' ? JSON.parse(userStr) : userStr).role; } catch (e) { }
+    }
+
+    if (role === 'parent') {
+      return next('/parent/dashboard');
+    } else if (role === 'super_admin' || role === 'director' || role === 'teacher') {
+      return next('/admin/dashboard');
+    } else {
+      return next('/monitor');
+    }
   }
 
   next();

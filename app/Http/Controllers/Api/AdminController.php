@@ -35,7 +35,7 @@ class AdminController extends Controller
             $queryUsers->whereHas('schools', function ($q) use ($schoolId) {
                 $q->where('schools.id', $schoolId);
             })->orWhere('school_id', $schoolId); // legacy fallback
-            $queryKiosks->where('school_id', $schoolId);
+            $queryKiosks->where('owner_school_id', $schoolId);
         } elseif ($isSuperAdmin && $schoolId) {
             // Super Admin can filter by a specific school if they want
             $querySchools->where('id', $schoolId);
@@ -43,7 +43,7 @@ class AdminController extends Controller
             $queryUsers->whereHas('schools', function ($q) use ($schoolId) {
                 $q->where('schools.id', $schoolId);
             })->orWhere('school_id', $schoolId);
-            $queryKiosks->where('school_id', $schoolId);
+            $queryKiosks->where('owner_school_id', $schoolId);
         }
 
         $totalSchools = $querySchools->count();
@@ -105,7 +105,8 @@ class AdminController extends Controller
             'isActive' => 'boolean',
             'maxKiosks' => 'required|integer|min:1|max:50',
             'entry_time' => 'nullable|string',
-            'tolerance_minutes' => 'nullable|integer|min:0'
+            'tolerance_minutes' => 'nullable|integer|min:0',
+            'qr_scan_type' => 'required|in:raw_id,hash_split,query_param,sep_url'
         ]);
 
         $logoPath = null;
@@ -134,6 +135,7 @@ class AdminController extends Controller
             'allowed_kiosks' => $request->maxKiosks,
             'entry_time' => $request->entry_time,
             'tolerance_minutes' => $request->tolerance_minutes ?? 15,
+            'qr_scan_type' => $request->qr_scan_type,
         ]);
 
         // Generar Kioscos automáticamente
@@ -255,7 +257,8 @@ class AdminController extends Controller
             'isActive' => 'boolean',
             'maxKiosks' => 'nullable|integer|min:0',
             'entry_time' => 'nullable|string',
-            'tolerance_minutes' => 'nullable|integer|min:0'
+            'tolerance_minutes' => 'nullable|integer|min:0',
+            'qr_scan_type' => 'required|in:raw_id,hash_split,query_param,sep_url'
         ]);
 
         $logoPath = $school->logo_path;
@@ -283,6 +286,7 @@ class AdminController extends Controller
             'allowed_kiosks' => $request->maxKiosks ?? $school->allowed_kiosks,
             'entry_time' => $request->has('entry_time') ? $request->entry_time : $school->entry_time,
             'tolerance_minutes' => $request->has('tolerance_minutes') ? $request->tolerance_minutes : $school->tolerance_minutes,
+            'qr_scan_type' => $request->qr_scan_type,
         ]);
 
         if ($request->filled('maxKiosks') && $request->maxKiosks > $school->ownedKiosks()->count()) {
@@ -466,9 +470,9 @@ class AdminController extends Controller
         $localStart = $request->query('local_start');
 
         if ($localStart) {
-            $today = \Illuminate\Support\Carbon::parse(substr($localStart, 0, 10), $timezone)->startOfDay()->setTimezone('UTC')->toDateTimeString();
+            $today = \Illuminate\Support\Carbon::parse(substr($localStart, 0, 10), $timezone)->startOfDay()->toDateTimeString();
         } else {
-            $today = now($timezone)->startOfDay()->setTimezone('UTC')->toDateTimeString();
+            $today = now($timezone)->startOfDay()->toDateTimeString();
         }
 
         $leaderboard = \App\Models\AttendanceLog::where('school_id', $schoolId)
@@ -508,8 +512,9 @@ class AdminController extends Controller
             $localTodayStart = now($timezone)->startOfDay();
         }
 
-        $today = $localTodayStart->copy()->setTimezone('UTC')->toDateTimeString();
-        $yesterday = $localTodayStart->copy()->subDay()->setTimezone('UTC')->toDateTimeString();
+        $today = $localTodayStart->copy()->setTimezone('UTC');
+        $yesterday = $localTodayStart->copy()->subDay()->setTimezone('UTC');
+        $tomorrow = $localTodayStart->copy()->addDay()->setTimezone('UTC');
 
         // 1. Basic Counts
         $totalStudents = Student::where('school_id', $schoolId)->count();
@@ -531,18 +536,24 @@ class AdminController extends Controller
         $attendanceRate = $totalStudents > 0 ? round(($attendanceToday / $totalStudents) * 100) : 0;
         $prevRate = $totalStudents > 0 ? round(($attendanceYesterday / $totalStudents) * 100) : 0;
 
-        // 3. Entry Summary (Mocking "Late" for now until thresholds exist)
-        $lateThreshold = $localTodayStart->copy()->addHours(8)->setTimezone('UTC')->toDateTimeString(); // 8:00 AM
-
+        // 3. Entry Summary
         $onTime = \App\Models\AttendanceLog::where('school_id', $schoolId)
             ->where('scanned_at', '>=', $today)
-            ->where('scanned_at', '<=', $lateThreshold)
+            ->where('scanned_at', '<', $tomorrow)
             ->where('type', 'in')
+            ->where('status', 'present')
             ->distinct('student_id')
             ->count();
 
-        $late = $attendanceToday - $onTime;
-        $absent = $totalStudents - $attendanceToday;
+        $late = \App\Models\AttendanceLog::where('school_id', $schoolId)
+            ->where('scanned_at', '>=', $today)
+            ->where('scanned_at', '<', $tomorrow)
+            ->where('type', 'in')
+            ->where('status', 'late')
+            ->distinct('student_id')
+            ->count();
+
+        $absent = $totalStudents - ($onTime + $late);
 
         // 4. Attendance by Grade/Group
         $groupStats = \App\Models\Classroom::where('school_id', $schoolId)
@@ -553,6 +564,7 @@ class AdminController extends Controller
         foreach ($groupStats as $group) {
             $present = \App\Models\AttendanceLog::where('school_id', $schoolId)
                 ->where('scanned_at', '>=', $today)
+                ->where('scanned_at', '<', $tomorrow)
                 ->where('type', 'in')
                 ->whereHas('student', function ($q) use ($group) {
                     $q->where('classroom_id', $group->id);
@@ -567,6 +579,7 @@ class AdminController extends Controller
         // 5. Unclosed Records Today
         $latestLogsSubToday = \App\Models\AttendanceLog::where('school_id', $schoolId)
             ->where('scanned_at', '>=', $today)
+            ->where('scanned_at', '<', $tomorrow)
             ->select('student_id', DB::raw('MAX(scanned_at) as last_scanned_at'))
             ->groupBy('student_id');
 
@@ -622,13 +635,15 @@ class AdminController extends Controller
         // Si no mandan local_start, intentamos deducirlo solo por fecha para el subquery
         if ($localStart) {
             $todayDateTime = \Illuminate\Support\Carbon::parse(substr($localStart, 0, 10), $timezone)->startOfDay()->setTimezone('UTC')->toDateTimeString();
+            $tomorrowDateTime = \Illuminate\Support\Carbon::parse(substr($localStart, 0, 10), $timezone)->endOfDay()->setTimezone('UTC')->toDateTimeString();
         } else {
-            $todayDateTime = now($timezone)->startOfDay()->setTimezone('UTC')->toDateTimeString();
+            $todayDateTime = now($timezone)->startOfDay()->setTimezone('UTC');
+            $tomorrowDateTime = now($timezone)->endOfDay()->setTimezone('UTC');
         }
 
         $latestLogsSubquery = \App\Models\AttendanceLog::select('student_id', DB::raw('MAX(scanned_at) as last_scanned_at'))
             ->where('school_id', $school_id)
-            ->where('scanned_at', '>=', $todayDateTime)
+            ->whereBetween('scanned_at', [$todayDateTime, $tomorrowDateTime])
             ->groupBy('student_id');
 
         $unclosedRecords = \App\Models\AttendanceLog::joinSub($latestLogsSubquery, 'latest_logs', function ($join) {
@@ -699,7 +714,7 @@ class AdminController extends Controller
             'shift' => $request->shift ?? 'matutino',
         ]);
 
-        $data = $request->except(['photo_url', 'photo', 'school_level', 'grade', 'group_letter', 'shift']);
+        $data = $request->except(['photo_url', 'photo', 'school_level', 'grade', 'group_letter', 'shift', 'classroom', 'school', 'id', 'created_at', 'updated_at', 'deleted_at']);
         $data['school_id'] = $schoolId;
         $data['classroom_id'] = $classroom->id;
 
@@ -752,7 +767,7 @@ class AdminController extends Controller
             'shift' => $request->shift ?? 'matutino',
         ]);
 
-        $data = $request->except(['photo_url', 'photo', 'school_level', 'grade', 'group_letter', 'shift']);
+        $data = $request->except(['photo_url', 'photo', 'school_level', 'grade', 'group_letter', 'shift', 'classroom', 'school', 'id', 'created_at', 'updated_at', 'deleted_at']);
         $data['classroom_id'] = $classroom->id;
 
         if ($request->hasFile('photo')) {

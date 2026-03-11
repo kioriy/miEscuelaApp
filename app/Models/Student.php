@@ -15,4 +15,24 @@ class Student extends Model
     {
         return $this->belongsTo(Classroom::class);
     }
+
+    public function attendanceLogs()
+    {
+        return $this->hasMany(AttendanceLog::class);
+    }
+
+    public function authorizedPersons()
+    {
+        return $this->hasMany(AuthorizedPerson::class);
+    }
+
+    /**
+     * Get the student's photo URL.
+     *
+     * @return string|null
+     */
+    public function getPhotoUrlAttribute()
+    {
+        return $this->photo_path ? asset('storage/' . $this->photo_path) : null;
+    }
 }
