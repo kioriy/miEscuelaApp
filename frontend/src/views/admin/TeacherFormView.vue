@@ -54,6 +54,25 @@
                   >
                 </div>
               </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-700 mb-1.5 ml-1">Matrícula / Código QR (Opcional)</label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <ion-icon :icon="barcodeOutline" class="text-gray-400 text-lg"></ion-icon>
+                  </div>
+                  <input 
+                    v-model="enrollment_code"
+                    type="text" 
+                    placeholder="Ej. PROF-24-XT90" 
+                    class="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue focus:bg-white transition-all font-medium text-gray-900 font-mono"
+                  >
+                </div>
+                <p class="text-[10px] font-bold text-gray-400 mt-1.5 ml-1 flex items-center gap-1">
+                  <ion-icon :icon="informationCircleOutline" class="text-xs"></ion-icon>
+                  Se generará automáticamente si se deja vacío.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -138,7 +157,8 @@
 <script setup lang="ts">
 import { IonPage, IonIcon } from '@ionic/vue';
 import { 
-  chevronForward, person, mail, people, shieldCheckmark, saveOutline 
+  chevronForward, person, mail, people, shieldCheckmark, saveOutline, 
+  barcodeOutline, informationCircleOutline
 } from 'ionicons/icons';
 import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
@@ -158,6 +178,7 @@ interface Classroom {
 const classrooms = ref<Classroom[]>([]);
 const name = ref('');
 const email = ref('');
+const enrollment_code = ref('');
 const selectedGrupos = ref<number[]>([]);
 const accesoActivo = ref(true);
 const isSaving = ref(false);
@@ -183,6 +204,7 @@ const saveTeacher = async () => {
     const payload = {
       name: name.value,
       email: email.value,
+      enrollment_code: enrollment_code.value,
       is_active: accesoActivo.value,
       groups: selectedGrupos.value
     };
@@ -226,6 +248,7 @@ onMounted(async () => {
          const data = res.data.data;
          name.value = data.name;
          email.value = data.email;
+         enrollment_code.value = data.enrollment_code || '';
          accesoActivo.value = data.is_active;
          
          // Select the assigned groups

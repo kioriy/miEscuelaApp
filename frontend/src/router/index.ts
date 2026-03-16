@@ -81,6 +81,11 @@ const routes: Array<RouteRecordRaw> = [
         component: () => import('../views/admin/TeacherAttendanceView.vue')
       },
       {
+        path: 'messaging',
+        name: 'DirectorMessaging',
+        component: () => import('../views/admin/DirectorMessagingView.vue')
+      },
+      {
         path: 'teacher/messaging',
         name: 'TeacherMessaging',
         component: () => import('../views/admin/TeacherMessagingView.vue')
@@ -154,6 +159,11 @@ const routes: Array<RouteRecordRaw> = [
         path: 'teachers',
         name: 'AdminTeachers',
         component: () => import('../views/admin/TeachersView.vue')
+      },
+      {
+        path: 'teachers/:id/detail',
+        name: 'TeacherDetail',
+        component: () => import('../views/admin/TeacherDetailView.vue')
       },
       {
         path: 'teachers/create',

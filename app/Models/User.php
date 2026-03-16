@@ -27,7 +27,8 @@ class User extends Authenticatable
         'school_id',
         'profile_photo_path',
         'avatar_url',
-        'is_active'
+        'is_active',
+        'enrollment_code'
     ];
 
     /**

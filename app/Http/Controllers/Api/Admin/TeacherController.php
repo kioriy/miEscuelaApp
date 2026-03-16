@@ -52,6 +52,7 @@ class TeacherController extends Controller
                 'id' => $teacher->id,
                 'name' => $teacher->name,
                 'email' => $teacher->email,
+                'enrollment_code' => $teacher->enrollment_code,
                 'photo' => $teacher->avatar_url ?: ($teacher->profile_photo_path ? asset('storage/' . $teacher->profile_photo_path) : null),
                 // Combine grade and group_letter for the badges e.g. "1ro A"
                 'grades' => $teacher->teacherGroups->filter(fn($g) => $g->classroom)->map(function ($group) {
@@ -73,10 +74,20 @@ class TeacherController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
+            'enrollment_code' => 'nullable|string|unique:users,enrollment_code',
             'groups' => 'array' // Array of classroom IDs
         ]);
 
         $schoolId = $this->getSchoolId($request);
+
+        $enrollmentCode = $request->enrollment_code;
+        if (!$enrollmentCode) {
+            // Generar código automático: PROF-YY-RANDOM
+            $year = date('y');
+            do {
+                $enrollmentCode = 'PROF-' . $year . '-' . strtoupper(Str::random(4));
+            } while (User::where('enrollment_code', $enrollmentCode)->exists());
+        }
 
         $teacher = User::create([
             'name' => $request->name,
@@ -84,6 +95,7 @@ class TeacherController extends Controller
             'password' => Hash::make(Str::random(12)),
             'role' => 'teacher',
             'school_id' => $schoolId,
+            'enrollment_code' => $enrollmentCode,
         ]);
 
         if ($schoolId) {
@@ -120,9 +132,25 @@ class TeacherController extends Controller
                 $sq->where('schools.id', $schoolId);
             })->orWhere('school_id', $schoolId);
         })
-            ->where('role', 'teacher')
-            ->with('teacherGroups')
+            ->where(function($q) {
+                $q->where('role', 'teacher')
+                  ->orWhereHas('schools', function($sq) {
+                      $sq->where('school_user.role', 'teacher');
+                  });
+            })
+            ->with('teacherGroups.classroom')
             ->findOrFail($id);
+
+        // Get today's attendance
+        $today = now()->startOfDay();
+        $todayLogs = \App\Models\TeacherAttendanceLog::where('user_id', $teacher->id)
+            ->where('school_id', $schoolId)
+            ->whereDate('scanned_at', $today)
+            ->orderBy('scanned_at')
+            ->get();
+
+        $entryLog = $todayLogs->where('type', 'in')->first();
+        $exitLog = $todayLogs->where('type', 'out')->last();
 
         return response()->json([
             'success' => true,
@@ -130,7 +158,24 @@ class TeacherController extends Controller
                 'id' => $teacher->id,
                 'name' => $teacher->name,
                 'email' => $teacher->email,
-                'groups' => $teacher->teacherGroups->pluck('classroom_id')->toArray()
+                'enrollment_code' => $teacher->enrollment_code,
+                'photo' => $teacher->avatar_url ?: ($teacher->profile_photo_path ? asset('storage/' . $teacher->profile_photo_path) : null),
+                'groups' => $teacher->teacherGroups->pluck('classroom_id')->toArray(),
+                'classrooms' => $teacher->teacherGroups->filter(fn($g) => $g->classroom)->map(function ($g) {
+                    return [
+                        'id' => $g->classroom->id,
+                        'grade' => $g->classroom->grade,
+                        'group_letter' => $g->classroom->group_letter,
+                        'school_level' => $g->classroom->school_level,
+                        'shift' => $g->classroom->shift,
+                    ];
+                })->values(),
+                'today_attendance' => [
+                    'status' => $entryLog ? ($entryLog->status ?? 'present') : 'absent',
+                    'entry_time' => $entryLog ? $entryLog->scanned_at->format('h:i A') : null,
+                    'exit_time' => $exitLog ? $exitLog->scanned_at->format('h:i A') : null,
+                ],
+                'created_at' => $teacher->created_at?->format('d/m/Y'),
             ]
         ]);
     }
@@ -149,12 +194,14 @@ class TeacherController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $teacher->id,
+            'enrollment_code' => 'nullable|string|unique:users,enrollment_code,' . $teacher->id,
             'groups' => 'array'
         ]);
 
         $teacher->update([
             'name' => $request->name,
             'email' => $request->email,
+            'enrollment_code' => $request->enrollment_code ?? $teacher->enrollment_code,
         ]);
 
         if ($request->has('groups')) {

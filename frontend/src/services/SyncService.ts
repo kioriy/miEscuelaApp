@@ -20,7 +20,7 @@ export class SyncService {
             });
 
             if (res.data.success) {
-                const { students, authorized_persons } = res.data.data;
+                const { students, authorized_persons, teachers } = res.data.data;
 
                 // 1. Guardar alumnos en Dexie (Upsert)
                 if (res.data.data.debug) {
@@ -31,14 +31,18 @@ export class SyncService {
                     const schoolsFound = [...new Set(students.map((s: any) => s.school_id))];
                     console.log(`[Sync] Recibidos ${students.length} alumnos de las escuelas: ${schoolsFound.join(', ')}`);
                     await db.students.bulkPut(students);
-                } else {
-                    console.log('[Sync] No hay alumnos nuevos para descargar.');
                 }
 
-                // 2. Guardar última fecha de sincronización
+                // 2. Guardar profesores en Dexie (Upsert)
+                if (teachers && teachers.length > 0) {
+                    console.log(`[Sync] Recibidos ${teachers.length} profesores.`);
+                    await db.teachers.bulkPut(teachers);
+                }
+
+                // 3. Guardar última fecha de sincronización
                 await storage.set('last_students_sync', res.data.timestamp);
 
-                return { success: true, count: students.length };
+                return { success: true, count: students.length + (teachers?.length || 0) };
             }
         } catch (error) {
             console.error('[Sync Pull Error]', error);
@@ -55,23 +59,40 @@ export class SyncService {
                 .where('sync_status')
                 .equals('pending')
                 .toArray();
+            
+            const pendingTeacherLogs = await db.teacherAttendanceLogs
+                .where('sync_status')
+                .equals('pending')
+                .toArray();
 
-            if (pendingLogs.length === 0) return { success: true, count: 0 };
+            if (pendingLogs.length === 0 && pendingTeacherLogs.length === 0) return { success: true, count: 0 };
 
             const res = await api.post('/sync/monitor/push', {
-                logs: pendingLogs
+                logs: pendingLogs,
+                teacher_logs: pendingTeacherLogs
             });
 
             if (res.data.success) {
-                // Marcar como sincronizados localmente
-                const ids = pendingLogs.map(log => log.id).filter(id => id !== undefined) as number[];
-                await db.attendanceLogs.bulkUpdate(ids.map(id => ({
-                    key: id,
-                    changes: { sync_status: 'synced' }
-                })));
+                // Marcar como sincronizados localmente (Alumnos)
+                if (pendingLogs.length > 0) {
+                    const ids = pendingLogs.map(log => log.id).filter(id => id !== undefined) as number[];
+                    await db.attendanceLogs.bulkUpdate(ids.map(id => ({
+                        key: id,
+                        changes: { sync_status: 'synced' }
+                    })));
+                }
 
-                console.log(`[Sync] ${pendingLogs.length} asistencias subidas al servidor.`);
-                return { success: true, count: pendingLogs.length };
+                // Marcar como sincronizados localmente (Profesores)
+                if (pendingTeacherLogs.length > 0) {
+                    const tids = pendingTeacherLogs.map(log => log.id).filter(id => id !== undefined) as number[];
+                    await db.teacherAttendanceLogs.bulkUpdate(tids.map(id => ({
+                        key: id,
+                        changes: { sync_status: 'synced' }
+                    })));
+                }
+
+                console.log(`[Sync] ${pendingLogs.length} asistencias y ${pendingTeacherLogs.length} de profesores subidas.`);
+                return { success: true, count: pendingLogs.length + pendingTeacherLogs.length };
             }
         } catch (error) {
             console.error('[Sync Push Error]', error);

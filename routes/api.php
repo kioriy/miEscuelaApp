@@ -82,6 +82,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/reports/unclosed', [AdminController::class, 'getUnclosedAttendance']);
         Route::get('/director/stats', [AdminController::class, 'directorDashboardStats']);
+        Route::get('/director/messaging/context', [\App\Http\Controllers\Api\Admin\DirectorMessagingController::class, 'getContext']);
+        Route::post('/director/messaging/send', [\App\Http\Controllers\Api\Admin\DirectorMessagingController::class, 'sendMessage']);
+        Route::get('/director/messaging/history', [\App\Http\Controllers\Api\Admin\DirectorMessagingController::class, 'getSentMessages']);
 
         // Teacher Portal
         Route::get('/teacher/dashboard', [TeacherDashboardController::class, 'getDashboardInfo']);

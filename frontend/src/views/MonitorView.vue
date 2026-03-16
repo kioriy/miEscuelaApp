@@ -59,7 +59,7 @@
           <div class="w-full lg:w-[65%] xl:w-[70%] bg-white rounded-3xl shadow-sm border border-gray-100 flex flex-col p-6 lg:p-8 relative overflow-hidden transition-all shrink-0 lg:shrink min-h-[380px] lg:min-h-0 order-1">
             
             <!-- Success Banner -->
-            <div v-if="currentStudent" class="p-3 lg:p-4 flex items-center justify-center gap-2 lg:gap-3 mb-4 lg:mb-10 w-full animate-fade-in-down border border-opacity-50 shrink-0 rounded-2xl"
+            <div v-if="scannedPerson" class="p-3 lg:p-4 flex items-center justify-center gap-2 lg:gap-3 mb-4 lg:mb-10 w-full animate-fade-in-down border border-opacity-50 shrink-0 rounded-2xl"
               :class="currentScanType === 'in' ? 'bg-green-100 border-green-200 text-green-700' : 'bg-orange-100 border-orange-200 text-orange-700'"
             >
               <div class="rounded-full w-5 h-5 lg:w-6 lg:h-6 flex items-center justify-center text-white"
@@ -91,9 +91,8 @@
               <!-- Profile Picture Container -->
               <div class="relative mb-4 lg:mb-8">
                 <div class="w-28 h-28 sm:w-36 sm:h-36 lg:w-56 lg:h-56 rounded-full overflow-hidden border-[6px] lg:border-8 border-white shadow-xl bg-orange-100 flex items-center justify-center text-4xl text-brand-blue font-black">
-                  <!-- Anime Boy Avatar Placeholder -->
-                  <img v-if="currentStudent?.photo_url" :src="currentStudent.photo_url" alt="Student Photo" class="w-full h-full object-cover" />
-                  <span v-else-if="currentStudent">{{ currentStudent.first_name[0] }}{{ currentStudent.last_name[0] }}</span>
+                  <img v-if="scannedPerson?.photo_url || scannedPerson?.avatar_url" :src="scannedPerson.photo_url || scannedPerson.avatar_url" alt="Photo" class="w-full h-full object-cover" />
+                  <span v-else-if="scannedPerson">{{ scannedPerson.first_name ? scannedPerson.first_name[0] : (scannedPerson.name ? scannedPerson.name[0] : '?') }}{{ scannedPerson.last_name ? scannedPerson.last_name[0] : '' }}</span>
                   <ion-icon v-else :icon="school" class="text-6xl text-blue-200"></ion-icon>
                 </div>
                 <!-- Badge (Blue ID icon icon) -->
@@ -102,12 +101,18 @@
                 </div>
               </div>
 
-              <!-- Student Details -->
+              <!-- Person Details -->
               <h2 class="text-3xl sm:text-4xl lg:text-5xl font-black text-gray-900 mb-1 lg:mb-3 tracking-tight text-center">
-                {{ currentStudent ? currentStudent.first_name + ' ' + currentStudent.last_name : '---' }}
+                {{ scannedPerson ? (scannedPerson.first_name ? scannedPerson.first_name + ' ' + scannedPerson.last_name : scannedPerson.name) : '---' }}
               </h2>
               <p class="text-sm sm:text-base lg:text-xl text-gray-500 font-semibold tracking-wide text-center">
-                ID: {{ currentStudent?.enrollment_code || '0000-0000' }} • {{ currentStudent?.grade || '0' }}º Grado - Grupo {{ currentStudent?.group_letter || '-' }}
+                ID: {{ scannedPerson?.enrollment_code || '0000-0000' }} 
+                <template v-if="scannedPerson?.grade">
+                  • {{ scannedPerson.grade }}º Grado - Grupo {{ scannedPerson.group_letter || '-' }}
+                </template>
+                <template v-else-if="scannedPerson?.role === 'teacher'">
+                  • Personal Docente
+                </template>
               </p>
             </div>
 
@@ -265,7 +270,7 @@ const dailyStats = ref({
   exits: 0,
   total: 0
 });
-const currentStudent = ref<any>(null);
+const scannedPerson = ref<any>(null);
 const recentHistory = ref<any[]>([]);
 const isSyncing = ref(false);
 const syncError = ref(false);
@@ -291,13 +296,18 @@ const recalculateLocalStats = async () => {
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const startOfTodayISO = todayStart.toISOString();
   
-  const logs = await db.attendanceLogs
+  const studentLogs = await db.attendanceLogs
+    .where('scanned_at')
+    .aboveOrEqual(startOfTodayISO)
+    .toArray();
+
+  const teacherLogs = await db.teacherAttendanceLogs
     .where('scanned_at')
     .aboveOrEqual(startOfTodayISO)
     .toArray();
     
-  const entries = logs.filter(l => l.type === 'in').length;
-  const exits = logs.filter(l => l.type === 'out').length;
+  const entries = studentLogs.filter(l => l.type === 'in').length + teacherLogs.filter(l => l.type === 'in').length;
+  const exits = studentLogs.filter(l => l.type === 'out').length + teacherLogs.filter(l => l.type === 'out').length;
   
   dailyStats.value = {
     entries: entries,
@@ -441,52 +451,52 @@ const handleScan = async () => {
 
   console.log(`[Scan] Raw: ${rawVal} | Intentando las matrículas: ${possibleIds.join(', ')} ...`);
   
-  // 1. Buscar alumno en la base de datos local (Dexie) comprobando nuestra lista de possibleIds (el `where` anyOf es excelente para arrays)
+  // 1. Buscar en Dexie
   const studentResult = await db.students.where('enrollment_code').anyOf(possibleIds).toArray();
+  const teacherResult = await db.teachers.where('enrollment_code').anyOf(possibleIds).toArray();
+  
   const student = studentResult.length > 0 ? studentResult[0] : null;
+  const teacher = teacherResult.length > 0 ? teacherResult[0] : null;
+  const person = student || teacher;
 
-  if (student) {
-    console.log(`[Scan] Alumno encontrado localmente: ${student.first_name} (ID: ${student.id}, Escuela: ${student.school_id})`);
+  if (person) {
+    if (student) console.log(`[Scan] Alumno encontrado: ${student.first_name} (ID: ${student.id})`);
+    if (teacher) console.log(`[Scan] Profesor encontrado: ${teacher.name} (ID: ${teacher.id})`);
   } else {
-    console.warn(`[Scan] Matrícula no encontrada en Dexie: ${rawVal}`);
+    console.warn(`[Scan] Matrícula no encontrada: ${rawVal}`);
   }
 
-  // Limpiar errores previos
   scanError.value = null;
 
-  if (student) {
+  if (person) {
     const now = getLocalTime();
-    // Obtener inicio del día local para filtrado preciso (medianoche local)
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
-    currentStudent.value = student;
+    scannedPerson.value = person;
     
-    // 2. Determinar si es Entrada o Salida (Lógica Toggle Inteligente)
-    // Buscamos el último log local de este alumno
-    const lastLog = await db.attendanceLogs
-      .where('student_id')
-      .equals(student.id)
-      .reverse()
-      .sortBy('scanned_at')
-      .then(logs => logs[0]);
+    // 2. Determinar si es Entrada o Salida
+    let lastLog = null;
+    if (student) {
+        lastLog = await db.attendanceLogs.where('student_id').equals(student.id).reverse().sortBy('scanned_at').then(logs => logs[0]);
+    } else if (teacher) {
+        lastLog = await db.teacherAttendanceLogs.where('user_id').equals(teacher.id).reverse().sortBy('scanned_at').then(logs => logs[0]);
+    }
 
     let type: 'in' | 'out' = 'in';
 
     if (lastLog) {
       const lastTime = new Date(lastLog.scanned_at).getTime();
-      const nowTime = getLocalTime().getTime();
+      const nowTime = now.getTime();
       
-      // Si el escaneo es hace menos de 10 segundos para el mismo alumno, ignorar (feedback visual)
       if (nowTime - lastTime < 10000) {
-        console.warn('Escaneo duplicado detectado para:', student.enrollment_code);
+        console.warn('Escaneo duplicado detectado para:', person.enrollment_code);
         scanError.value = 'Escaneo Duplicado';
-        currentStudent.value = null;
+        scannedPerson.value = null;
         setTimeout(() => { scanError.value = null; }, 3000);
         return;
       }
 
       if (lastTime >= todayStart.getTime()) {
-        // Si ya hay registros hoy, alternamos
         type = lastLog.type === 'in' ? 'out' : 'in';
       }
     }
@@ -494,36 +504,45 @@ const handleScan = async () => {
     currentScanType.value = type;
 
     // 3. Registrar asistencia localmente
-    const newLog = {
-      student_id: student.id,
-      scanned_at: getLocalTime().toISOString(),
-      type: type,
-      sync_status: 'pending' as const
-    };
-    
-    await db.attendanceLogs.add(newLog);
+    if (student) {
+        await db.attendanceLogs.add({
+            student_id: student.id,
+            scanned_at: now.toISOString(),
+            type: type,
+            sync_status: 'pending'
+        });
+    } else if (teacher) {
+        await db.teacherAttendanceLogs.add({
+            user_id: teacher.id,
+            scanned_at: now.toISOString(),
+            type: type,
+            sync_status: 'pending'
+        });
+    }
     
     // 4. Actualizar historial visual
     recentHistory.value.unshift({
-      ...student,
-      time: getLocalTime().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      ...person,
+      first_name: student ? student.first_name : teacher?.name,
+      last_name: student ? student.last_name : '(Profesor)',
+      photo_url: student ? student.photo_url : teacher?.avatar_url,
+      grade: student ? student.grade : 'Staff',
+      group_letter: student ? student.group_letter : '',
+      time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       type: type === 'in' ? 'Entrada' : 'Salida'
     });
     
     if (recentHistory.value.length > 10) recentHistory.value.pop();
 
-    // 5. Intentar sincronización rápida y actualizar estadísticas locales inmediatamente
     recalculateLocalStats();
     SyncService.pushAttendance();
     
-    // Reset visual despues de 5s
     setTimeout(() => {
-       if (currentStudent.value?.id === student.id) currentStudent.value = null;
+       if (scannedPerson.value?.id === person.id) scannedPerson.value = null;
     }, 5000);
   } else {
-    // Matrícula no encontrada (No bloqueante)
     scanError.value = 'ID No Encontrado';
-    currentStudent.value = null;
+    scannedPerson.value = null;
     setTimeout(() => { scanError.value = null; }, 3000);
   }
 };

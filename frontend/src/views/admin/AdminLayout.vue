@@ -56,7 +56,7 @@
               Panel Principal
             </router-link>
 
-            <router-link v-if="isTeacher" to="/admin/teacher/messaging" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/messaging') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
+            <router-link v-if="currentProfile === 'teacher' || currentProfile === 'director'" :to="currentProfile === 'teacher' ? '/admin/teacher/messaging' : '/admin/messaging'" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/messaging') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
               <ion-icon :icon="chatbubbleOutline" class="text-xl"></ion-icon>
               Mensajes
             </router-link>
@@ -76,22 +76,22 @@
               Kioscos
             </router-link>
 
-            <router-link v-if="!isAdmin && !isTeacher" to="/admin/teachers" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/teachers') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
+            <router-link v-if="currentProfile === 'super_admin' || currentProfile === 'director'" to="/admin/teachers" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/teachers') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
               <ion-icon :icon="people" class="text-xl"></ion-icon>
               Profesores
             </router-link>
 
-            <router-link v-if="!isTeacher" to="/admin/students" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/students') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
+            <router-link v-if="currentProfile !== 'teacher'" to="/admin/students" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/students') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
               <ion-icon :icon="school" class="text-xl"></ion-icon>
               Estudiantes
             </router-link>
 
-            <a v-if="!isTeacher" href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold text-gray-500 hover:bg-gray-50 hover:text-gray-900">
+            <a v-if="currentProfile !== 'teacher'" href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold text-gray-500 hover:bg-gray-50 hover:text-gray-900">
               <ion-icon :icon="barChart" class="text-xl"></ion-icon>
               Reportes
             </a>
 
-            <a v-if="!isTeacher" href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold text-gray-500 hover:bg-gray-50 hover:text-gray-900">
+            <a v-if="currentProfile !== 'teacher'" href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold text-gray-500 hover:bg-gray-50 hover:text-gray-900">
               <ion-icon :icon="settings" class="text-xl"></ion-icon>
               Configuración
             </a>
@@ -115,7 +115,7 @@
       <main class="flex-1 overflow-y-auto w-full h-full relative pt-16 lg:pt-0 bg-gray-50 flex flex-col">
         
         <!-- Teacher Portal Specific Header (Visible only for teachers on Desktop) -->
-        <div v-if="isTeacher" class="hidden lg:flex items-center justify-between px-10 py-4 bg-white border-b border-gray-100 shrink-0">
+        <div v-if="currentProfile === 'teacher'" class="hidden lg:flex items-center justify-between px-10 py-4 bg-white border-b border-gray-100 shrink-0">
           <div class="flex items-center gap-4">
             <div class="w-12 h-12 bg-[#EBF4FF] rounded-2xl flex items-center justify-center text-brand-blue shadow-[0_4px_12px_rgba(59,130,246,0.15)]">
               <ion-icon :icon="school" class="text-2xl"></ion-icon>
@@ -175,7 +175,6 @@ onMounted(async () => {
 });
 
 const isAdmin = computed(() => currentProfile.value === 'super_admin');
-const isTeacher = computed(() => currentProfile.value === 'teacher');
 
 const formattedDate = computed(() => {
   const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' };

@@ -120,13 +120,59 @@ class MonitorSyncController extends Controller
             return $person;
         });
 
-        // 7. Retornamos la información estructurada
+        // 7. Buscamos los profesores relacionados a estas escuelas
+        $teachers = \App\Models\User::where(function($q) use ($standardSchoolIds, $newSchoolIds) {
+            $allIds = array_merge($standardSchoolIds, $newSchoolIds);
+            if (!empty($allIds)) {
+                $q->whereIn('school_id', $allIds)
+                  ->orWhereHas('schools', function($sq) use ($allIds) {
+                      $sq->whereIn('schools.id', $allIds);
+                  });
+            } else {
+                $q->whereRaw('1 = 0');
+            }
+        })
+        ->where(function($q) {
+            $q->where('role', 'teacher')
+              ->orWhereHas('schools', function($sq) {
+                  $sq->where('school_user.role', 'teacher');
+              });
+        })
+        ->where(function($q) use ($lastSync, $newSchoolIds) {
+            // Incremental: modified since last sync
+            $q->where('updated_at', '>', $lastSync);
+            
+            // Or if they belong to a school that was just recently added to this kiosk (newSchoolIds)
+            if (!empty($newSchoolIds)) {
+                $q->orWhereIn('school_id', $newSchoolIds)
+                  ->orWhereHas('schools', function($sq) use ($newSchoolIds) {
+                      $sq->whereIn('schools.id', $newSchoolIds);
+                  });
+            }
+        })
+        ->select('id', 'school_id', 'enrollment_code', 'name', 'avatar_url', 'profile_photo_path', 'updated_at')
+        ->get();
+
+        $teachers = $teachers->map(function ($teacher) {
+            return [
+                'id' => $teacher->id,
+                'school_id' => $teacher->school_id, // Primary school ID
+                'enrollment_code' => $teacher->enrollment_code,
+                'name' => $teacher->name,
+                'avatar_url' => $teacher->avatar_url ?: ($teacher->profile_photo_path ? asset('storage/' . $teacher->profile_photo_path) : null),
+                'role' => 'teacher',
+                'updated_at' => $teacher->updated_at,
+            ];
+        })->filter(fn($t) => !empty($t['enrollment_code']))->values();
+
+        // 8. Retornamos la información estructurada
         return response()->json([
             'success' => true,
             'timestamp' => now()->toDateTimeString(), // El monitor guardará esta fecha para su próxima petición
             'data' => [
                 'students' => $students,
                 'authorized_persons' => $authorizedPersons,
+                'teachers' => $teachers,
                 'debug' => [
                     'received_kiosk_id' => $request->input('kiosk_id'),
                     'standardSchoolIds' => $standardSchoolIds,

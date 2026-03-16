@@ -113,6 +113,7 @@
               <tr class="border-b border-gray-100 bg-gray-50/50 text-[10px] font-black tracking-widest text-gray-400 uppercase">
                 <th class="py-4 px-6 font-black w-16">Foto</th>
                 <th class="py-4 px-6 font-black">Nombre Completo</th>
+                <th class="py-4 px-6 font-black">Matrícula</th>
                 <th class="py-4 px-6 font-black">Correo Electrónico</th>
                 <th class="py-4 px-6 font-black">Grados y Grupos Asignados</th>
                 <th class="py-4 px-6 font-black">Estatus en Plantel</th>
@@ -134,6 +135,9 @@
                   </div>
                 </td>
                 <td class="py-3 px-6 font-bold text-gray-900 whitespace-nowrap">{{ teacher.name }}</td>
+                <td class="py-3 px-6">
+                  <span class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-mono font-bold">{{ teacher.enrollment_code || '---' }}</span>
+                </td>
                 <td class="py-3 px-6 text-gray-500">{{ teacher.email }}</td>
                 <td class="py-3 px-6">
                   <div class="flex flex-wrap gap-2">
@@ -152,7 +156,7 @@
                 </td>
                 <td class="py-3 px-6 text-right whitespace-nowrap">
                   <div class="flex items-center justify-end gap-2">
-                    <button class="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-50 text-gray-500 hover:bg-emerald-500 hover:text-white transition-all shadow-sm">
+                    <button @click="$router.push(`/admin/teachers/${teacher.id}/detail`)" class="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-50 text-gray-500 hover:bg-emerald-500 hover:text-white transition-all shadow-sm">
                       <ion-icon :icon="eyeOutline" class="text-lg"></ion-icon>
                     </button>
                     <button @click="$router.push(`/admin/teachers/${teacher.id}/edit`)" class="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-50 text-gray-500 hover:bg-brand-blue hover:text-white transition-all shadow-sm">

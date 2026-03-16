@@ -67,7 +67,7 @@
               <button @click="fetchDashboardStats()" class="bg-white border border-gray-200 text-gray-700 font-bold w-12 h-12 rounded-xl text-lg shadow-sm hover:bg-gray-50 flex items-center justify-center transition-all" title="Actualizar datos">
                 <ion-icon :icon="refreshOutline"></ion-icon>
               </button>
-              <button class="bg-white text-gray-700 font-bold px-5 py-3 rounded-xl border border-gray-200 shadow-sm hover:bg-gray-50 transition-all flex items-center gap-2">
+              <button @click="$router.push('/admin/messaging')" class="bg-white text-gray-700 font-bold px-5 py-3 rounded-xl border border-gray-200 shadow-sm hover:bg-gray-50 transition-all flex items-center gap-2">
                 <ion-icon :icon="megaphoneOutline" class="text-xl"></ion-icon>
                 Difundir Mensaje
               </button>

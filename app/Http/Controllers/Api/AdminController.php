@@ -614,17 +614,41 @@ class AdminController extends Controller
             ->where('attendance_logs.type', 'in')
             ->count();
 
-        // 6. Staff Status (Teachers)
-        $staff = \App\Models\User::where('school_id', $schoolId)
+        // 6. Staff Status (Real Teachers Attendance)
+        $staffMembers = \App\Models\User::where(function($q) use ($schoolId) {
+                $q->where('school_id', $schoolId)
+                  ->orWhereHas('schools', function($sq) use ($schoolId) {
+                      $sq->where('schools.id', $schoolId)->where('school_user.role', 'teacher');
+                  });
+            })
             ->where('role', 'teacher')
-            ->take(4)
             ->get();
 
-        // Simulated data for teachers status
-        foreach ($staff as $item) {
-            $item->status = 'present';
-            $item->time = '07:45 AM';
-        }
+        $totalStaff = $staffMembers->count();
+        
+        // Fetch latest logs for these teachers today
+        $latestTeacherLogs = \App\Models\TeacherAttendanceLog::where('school_id', $schoolId)
+            ->where('scanned_at', '>=', $today)
+            ->where('scanned_at', '<', $tomorrow)
+            ->orderBy('scanned_at', 'desc')
+            ->get()
+            ->groupBy('user_id');
+
+        $staffData = $staffMembers->map(function($teacher) use ($latestTeacherLogs) {
+            $userLogs = $latestTeacherLogs->get($teacher->id);
+            $lastLog = $userLogs ? $userLogs->first() : null;
+            $entryLog = $userLogs ? $userLogs->where('type', 'in')->last() : null; // First 'in' of the day
+
+            return [
+                'id' => $teacher->id,
+                'name' => $teacher->name,
+                'avatar_url' => $teacher->avatar_url ?: ($teacher->profile_photo_path ? asset('storage/' . $teacher->profile_photo_path) : null),
+                'status' => ($lastLog && $lastLog->type === 'in') ? 'present' : 'absent',
+                'time' => $entryLog ? $entryLog->scanned_at->setTimezone(config('app.timezone', 'America/Mexico_City'))->format('h:i A') : '---',
+            ];
+        });
+
+        $staffPresent = $staffData->where('status', 'present')->count();
 
         return response()->json([
             'success' => true,
@@ -635,15 +659,15 @@ class AdminController extends Controller
                 'attendanceTrend' => $attendanceRate >= $prevRate ? '+' . ($attendanceRate - $prevRate) : '-' . ($prevRate - $attendanceRate),
                 'absentCount' => $absent,
                 'unclosedCount' => $unclosedCount,
-                'staffPresent' => $staff->count(),
-                'totalStaff' => \App\Models\User::where('school_id', $schoolId)->where('role', 'teacher')->count(),
+                'staffPresent' => $staffPresent,
+                'totalStaff' => $totalStaff,
                 'entrySummary' => [
                     'onTime' => $onTime,
                     'late' => $late,
                     'absent' => $absent
                 ],
                 'groupStats' => $groupStats,
-                'staff' => $staff
+                'staff' => $staffData->take(8) // Limiting for dashboard view
             ]
         ]);
     }
