@@ -71,6 +71,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/kioscos/{id}', [\App\Http\Controllers\Api\Admin\KioskController::class, 'destroy']);
         Route::post('/kioscos/{id}/link-school', [\App\Http\Controllers\Api\Admin\KioskController::class, 'linkSchool']);
         Route::post('/kioscos/{id}/unlink-school', [\App\Http\Controllers\Api\Admin\KioskController::class, 'unlinkSchool']);
+        Route::post('/kioscos/{id}/reset', [\App\Http\Controllers\Api\Admin\KioskController::class, 'reset']);
         // Estudiantes e Imágenes
         Route::get('/students', [AdminController::class, 'getStudents']);
         Route::post('/students', [AdminController::class, 'storeStudent']);

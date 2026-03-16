@@ -14,14 +14,7 @@
             desde su panel.
           </p>
           
-          <input 
-            id="emergency-scan-input"
-            v-model="scanValue"
-            @keyup.enter="handleScan"
-            @blur="handleBlur"
-            class="opacity-0 absolute"
-            autofocus
-          />
+          <!-- Scanner handled globally -->
           <div class="animate-bounce mt-4">
             <ion-icon :icon="barcodeOutline" class="text-6xl text-white opacity-50"></ion-icon>
           </div>
@@ -65,27 +58,6 @@
           <!-- Left Column: Current Scan Card -->
           <div class="w-full lg:w-[65%] xl:w-[70%] bg-white rounded-3xl shadow-sm border border-gray-100 flex flex-col p-6 lg:p-8 relative overflow-hidden transition-all shrink-0 lg:shrink min-h-[380px] lg:min-h-0 order-1">
             
-            <!-- Scanner Input (Subtle) -->
-            <div class="absolute top-4 right-4 z-20">
-              <input 
-                id="monitor-scan-input"
-                ref="scanInput"
-                v-model="scanValue" 
-                @keyup.enter="handleScan" 
-                @blur="handleBlur"
-                placeholder="Matrícula..." 
-                class="bg-blue-50 border border-blue-100 rounded-lg px-3 py-1.5 text-xs font-bold text-brand-blue outline-none focus:ring-2 focus:ring-blue-200 transition-all opacity-40 hover:opacity-100 focus:opacity-100"
-                autofocus
-              />
-            </div>
-
-            <!-- Global Click Overlay (Invisible) -->
-            <div 
-              @click="ensureFocus" 
-              class="absolute inset-0 z-10 cursor-default"
-              title="Click para reenfocar"
-            ></div>
-
             <!-- Success Banner -->
             <div v-if="currentStudent" class="p-3 lg:p-4 flex items-center justify-center gap-2 lg:gap-3 mb-4 lg:mb-10 w-full animate-fade-in-down border border-opacity-50 shrink-0 rounded-2xl"
               :class="currentScanType === 'in' ? 'bg-green-100 border-green-200 text-green-700' : 'bg-orange-100 border-orange-200 text-orange-700'"
@@ -276,7 +248,6 @@ import { SyncService } from '@/services/SyncService';
 import api from '@/services/api';
 
 const router = useRouter();
-const scanInput = ref<any>(null);
 const userProfile = ref({
   name: 'Cargando...',
   role: 'user',
@@ -313,24 +284,6 @@ const timeOffsetMs = ref(0);
 
 const getLocalTime = () => {
   return new Date(Date.now() + timeOffsetMs.value);
-};
-
-let watchdogInterval: any;
-
-const handleBlur = () => {
-  // Reenfocar inmediatamente usando el ID directo por mayor velocidad
-  setTimeout(() => {
-    const el = document.getElementById('monitor-scan-input');
-    if (el) (el as HTMLInputElement).focus();
-  }, 10);
-};
-
-const ensureFocus = (e?: Event) => {
-  // Si ya estamos en el input o en otro campo (por error), no hacer nada
-  if (document.activeElement?.tagName === 'INPUT') return;
-  
-  const el = document.getElementById('monitor-scan-input');
-  if (el) (el as HTMLInputElement).focus();
 };
 
 const recalculateLocalStats = async () => {
@@ -379,8 +332,16 @@ const fetchSchoolInfo = async () => {
       schoolInfo.value.schools = res.data.data.schools || [];
       schoolInfo.value.kioskName = res.data.data.kiosk_name;
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching school info:', error);
+    if (error.response?.status === 401) {
+      console.warn('⚠️ Token de Kiosco revocado o inválido. Redirigiendo a activación...');
+      await storage.remove('kiosk_config');
+      await storage.remove('kiosk_token');
+      router.push('/monitor/activate');
+    } else {
+      schoolInfo.value.kioskName = 'Error de conexión';
+    }
   }
 };
 
@@ -580,6 +541,32 @@ const runSync = async () => {
   }
 };
 
+// --- Escáner Global ---
+let scanBuffer = '';
+let scanTimeout: any;
+
+const handleGlobalKeydown = (e: KeyboardEvent) => {
+  // Ignorar eventos si estamos en un campo de texto real (ej. focus mode manual o admin login)
+  if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+
+  if (e.key === 'Enter') {
+    if (scanBuffer.length > 0) {
+      scanValue.value = scanBuffer;
+      handleScan();
+      scanBuffer = ''; // Limpiar tras procesar
+    }
+  } else if (e.key.length === 1) { // Capturar solo caracteres imprimibles
+    scanBuffer += e.key;
+
+    // Diferenciar de tecleo humano: Si pasan más de 200ms entre teclas, se reinicia el buffer
+    // (Un escáner de barras suele enviar todo rapidísimo)
+    clearTimeout(scanTimeout);
+    scanTimeout = setTimeout(() => {
+      scanBuffer = '';
+    }, 200);
+  }
+};
+
 onMounted(async () => {
   const user = await storage.get('auth_user');
   const kioskConfig = await storage.get('kiosk_config');
@@ -682,20 +669,14 @@ onMounted(async () => {
   }
   historyLoading.value = false;
 
-  // Escuchadores globales con fase de captura (true) para saltar stopPropagation
-  document.addEventListener('click', ensureFocus, true);
-  window.addEventListener('focus', ensureFocus);
-  
-  // Watchdog: Forzar foco cada segundo por si acaso
-  watchdogInterval = setInterval(ensureFocus, 1000);
+  // Escuchador Global para el escáner
+  window.addEventListener('keydown', handleGlobalKeydown);
 });
 
 onUnmounted(() => {
   clearInterval(timeInterval);
   clearInterval(syncInterval);
-  clearInterval(watchdogInterval);
-  document.removeEventListener('click', ensureFocus, true);
-  window.removeEventListener('focus', ensureFocus);
+  window.removeEventListener('keydown', handleGlobalKeydown);
 });
 </script>
 

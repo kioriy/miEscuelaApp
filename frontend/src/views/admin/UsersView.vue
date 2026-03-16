@@ -163,6 +163,8 @@
               <td class="p-4">
                 <span v-if="user.role === 'super_admin'" class="bg-gray-100 border border-gray-200 text-gray-600 text-[11px] px-2.5 py-1 rounded-full font-bold">Súper Admin</span>
                 <span v-else-if="user.role === 'director'" class="bg-indigo-50 border border-indigo-100 text-indigo-600 text-[11px] px-2.5 py-1 rounded-full font-bold">Director</span>
+                <span v-else-if="user.role === 'teacher'" class="bg-brand-blue/10 border border-brand-blue/20 text-brand-blue text-[11px] px-2.5 py-1 rounded-full font-bold">Maestro</span>
+                <span v-else-if="user.role === 'parent'" class="bg-emerald-50 border border-emerald-100 text-emerald-600 text-[11px] px-2.5 py-1 rounded-full font-bold">Padre / Tutor</span>
                 <span v-else class="bg-brand-blue/10 border border-brand-blue/20 text-brand-blue text-[11px] px-2.5 py-1 rounded-full font-bold">{{ user.role }}</span>
               </td>
               <td class="p-4">
@@ -199,37 +201,7 @@
       </div>
     </div>
 
-    <!-- Carga Masiva (Reusable block shape) -->
-    <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col mb-4">
-      <div class="flex items-center gap-4 mb-4">
-        <div class="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-brand-blue shrink-0">
-          <ion-icon :icon="push" class="text-lg"></ion-icon>
-        </div>
-        <div>
-          <h3 class="text-lg font-bold text-gray-900 tracking-tight">Carga Masiva de Alumnos</h3>
-          <p class="text-gray-500 text-[13px] font-medium">Importar datos desde archivo (CSV, XLSX, JSON)</p>
-        </div>
-      </div>
 
-      <div class="border-2 border-dashed border-gray-200 rounded-2xl p-6 flex flex-col items-center justify-center text-center hover:border-brand-blue hover:bg-blue-50/10 transition-colors cursor-pointer group mt-4">
-        <div class="flex gap-8 mb-6 text-gray-400 group-hover:text-brand-blue transition-colors">
-           <div class="flex flex-col items-center gap-2">
-              <ion-icon :icon="documentText" class="text-3xl"></ion-icon>
-              <span class="text-[10px] font-bold uppercase tracking-widest text-gray-500">CSV</span>
-           </div>
-           <div class="flex flex-col items-center gap-2">
-              <ion-icon :icon="grid" class="text-3xl"></ion-icon>
-              <span class="text-[10px] font-bold uppercase tracking-widest text-gray-500">XLSX</span>
-           </div>
-           <div class="flex flex-col items-center gap-2">
-              <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M14.6 16.6l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4m-5.2 0L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4z"/></svg>
-              <span class="text-[10px] font-bold uppercase tracking-widest text-gray-500">JSON</span>
-           </div>
-        </div>
-        <h4 class="text-sm font-bold text-gray-900 mb-1">Arrastra tus archivos aquí o haz clic para subir</h4>
-        <p class="text-xs text-gray-400 font-medium">Tamaño máximo de archivo: 10MB</p>
-      </div>
-    </div>
   </div>
     </ion-content>
   </ion-page>

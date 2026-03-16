@@ -90,6 +90,14 @@
             </div>
             
             <div class="flex items-center gap-3 shrink-0 w-full lg:w-auto">
+              <div v-if="isAdmin" class="relative flex-1 lg:flex-none">
+                <select v-model="filterSchool" @change="fetchStudents" class="w-full appearance-none bg-gray-50/50 border border-gray-200 text-brand-blue text-[13px] font-black rounded-2xl py-3 pl-4 pr-10 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-brand-blue cursor-pointer">
+                  <option value="">Todas las Escuelas</option>
+                  <option v-for="school in userSchools" :key="school.id" :value="school.id">{{ school.name }}</option>
+                </select>
+                <ion-icon :icon="chevronDown" class="absolute right-3 top-1/2 -translate-y-1/2 text-brand-blue pointer-events-none"></ion-icon>
+              </div>
+              
               <div class="relative flex-1 lg:flex-none">
                 <select v-model="filterGrade" class="w-full appearance-none bg-gray-50/50 border border-gray-200 text-gray-700 text-[13px] font-black rounded-2xl py-3 pl-4 pr-10 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-brand-blue cursor-pointer">
                   <option value="">Todos los Grados</option>
@@ -225,13 +233,20 @@ const students = ref<any[]>([]);
 const searchQuery = ref('');
 const filterGrade = ref('');
 const filterGroup = ref('');
+const filterSchool = ref('');
 const showBulkModal = ref(false);
 const activeSchoolName = ref('');
+const isAdmin = ref(false);
+const userSchools = ref<any[]>([]);
 
 const fetchStudents = async () => {
   loading.value = true;
   try {
-    const res = await api.get('/admin/students');
+    const params: any = {};
+    if (isAdmin.value && filterSchool.value) {
+      params.school_id = filterSchool.value;
+    }
+    const res = await api.get('/admin/students', { params });
     if (res.data.success) {
       students.value = res.data.data;
     }
@@ -266,6 +281,10 @@ const resetFilters = () => {
   searchQuery.value = '';
   filterGrade.value = '';
   filterGroup.value = '';
+  filterSchool.value = '';
+  if (isAdmin.value) {
+    fetchStudents();
+  }
 };
 
 const handleRefresh = async (event: any) => {
@@ -302,12 +321,36 @@ const confirmDelete = async (student: any) => {
 };
 
 onMounted(async () => {
-  const currentId = await storage.get('current_school_id');
-  const userSchools = await storage.get('user_schools');
-  if (currentId && userSchools) {
-    const active = userSchools.find((s: any) => s.id === currentId);
-    if (active) activeSchoolName.value = active.name;
+  const user = await storage.get('auth_user');
+  if (user && user.role === 'super_admin') {
+    isAdmin.value = true;
   }
+
+  const currentId = await storage.get('current_school_id');
+  const storedSchools = await storage.get('user_schools');
+  if (storedSchools) {
+    userSchools.value = storedSchools;
+    const active = storedSchools.find((s: any) => s.id === currentId);
+    if (active) activeSchoolName.value = active.name;
+    
+    // Set active school filter if admin has one currently selected from Sidebar
+    if (isAdmin.value && currentId) {
+      filterSchool.value = currentId;
+    }
+  }
+
+  // Fallback for Super Admin: always fetch master list of schools to guarantee the selector is populated
+  if (isAdmin.value) {
+    try {
+      const res = await api.get('/admin/schools');
+      if (res.data.success) {
+        userSchools.value = res.data.data;
+      }
+    } catch (e) {
+      console.warn("Could not fetch master schools list for filter", e);
+    }
+  }
+
   fetchStudents();
 });
 </script>

@@ -20,6 +20,7 @@ class AttendanceSyncController extends Controller
         $user = $request->user();
         if ($user instanceof \App\Models\Kiosk) {
             $user->load('schools');
+            $user->update(['last_sync_at' => now()]);
             $schoolIds = $user->schools->pluck('id')->toArray();
         } else {
             $schoolIds = [$this->getSchoolId($request)];
@@ -72,7 +73,12 @@ class AttendanceSyncController extends Controller
         // 2. Obtenemos el ID general de escuela y del kiosco desde el token
         $user = $request->user();
         $fallbackSchoolId = $this->getSchoolId($request);
-        $kioskId = ($user instanceof \App\Models\Kiosk) ? $user->id : null;
+        
+        $kioskId = null;
+        if ($user instanceof \App\Models\Kiosk) {
+            $kioskId = $user->id;
+            $user->update(['last_sync_at' => now()]);
+        }
 
         $logs = $request->input('logs');
         $studentIds = collect($logs)->pluck('student_id')->unique()->toArray();
@@ -85,19 +91,41 @@ class AttendanceSyncController extends Controller
         $recordsToInsert = [];
         $now = now(); // Native Carbon object
 
+        // Pre-fetch school settings to avoid N+1 querying during bulk inserts
+        $schoolSettings = \App\Models\School::whereIn('id', array_unique(array_merge(array_values($studentSchools), [$fallbackSchoolId])))
+            ->get(['id', 'timezone', 'entry_time', 'tolerance_minutes'])
+            ->keyBy('id');
+
         // 3. Preparamos los datos
         foreach ($logs as $log) {
-            // Convertimos la fecha ISO (JS) a objeto Carbon
-            $scannedAt = \Illuminate\Support\Carbon::parse($log['scanned_at']);
-
             // Buscamos a cuál de las sedes pertenece este alumno; si no se encuentra (borrado), usamos el fallback
             $resolvedSchoolId = $studentSchools[$log['student_id']] ?? $fallbackSchoolId;
+            $school = $schoolSettings->get($resolvedSchoolId);
+            
+            $schoolTimezone = $school->timezone ?? config('app.timezone', 'America/Mexico_City');
+            $entryTime = $school->entry_time ?? '07:00:00';
+            $tolerance = $school->tolerance_minutes ?? 15;
+
+            // Convertimos la fecha ISO (JS) a objeto Carbon y la rotamos a la zona horaria real local
+            // antes de blindarla en la DB (donde Laravel interpretará todas como 'America/Mexico_City' nativamente).
+            $scannedAt = \Illuminate\Support\Carbon::parse($log['scanned_at'])->setTimezone($schoolTimezone);
+
+            // Calcular estatus (presente o tarde) para entradas
+            $status = 'present'; 
+            if ($log['type'] === 'in') {
+                // Creamos el límite de tiempo para ese día específico
+                $limit = $scannedAt->copy()->setTimeFromTimeString($entryTime)->addMinutes($tolerance);
+                if ($scannedAt->greaterThan($limit)) {
+                    $status = 'late';
+                }
+            }
 
             $recordsToInsert[] = [
                 'school_id' => $resolvedSchoolId,
                 'student_id' => $log['student_id'],
                 'scanned_at' => $scannedAt,
                 'type' => $log['type'],
+                'status' => $status,
                 'kiosk_id' => $log['kiosk_id'] ?? $kioskId,
                 'recorded_by_user_id' => ($user instanceof \App\Models\User) ? $user->id : null,
                 'authorized_person_id' => $log['authorized_person_id'] ?? null,

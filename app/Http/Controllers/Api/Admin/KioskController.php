@@ -39,16 +39,11 @@ class KioskController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'owner_school_id' => 'required|exists:schools,id',
-            'location' => 'nullable|string|max:255',
-            'status' => 'nullable|string',
+            'owner_school_id' => 'required|exists:schools,id'
         ]);
-
         $kiosk = Kiosk::create([
             'name' => $request->name,
             'owner_school_id' => $request->owner_school_id,
-            'location' => $request->location,
-            'status' => $request->status ?? 'Offline',
             'activation_code' => 'K-' . strtoupper(substr(uniqid(), -4)) . '-' . mt_rand(10, 99)
         ]);
 
@@ -116,5 +111,26 @@ class KioskController extends Controller
         $kiosk->schools()->detach($request->school_id);
 
         return response()->json(['success' => true, 'data' => $kiosk->load(['schools'])]);
+    }
+
+    public function reset($id)
+    {
+        $kiosk = Kiosk::findOrFail($id);
+
+        // Delete all sanctum tokens for this kiosk to force logout on the physical device
+        $kiosk->tokens()->delete();
+
+        // Reset the Kiosk back to its offline, unlinked state while preserving its schools and owner
+        $kiosk->update([
+            'is_active' => false,
+            'device_token' => null,
+            'name' => null // Optional: clear the custom name it grabbed during activation
+        ]);
+
+        return response()->json([
+            'success' => true, 
+            'message' => 'El Kiosko ha sido desvinculado exitosamente.',
+            'data' => $kiosk->load(['ownerSchool', 'schools'])
+        ]);
     }
 }

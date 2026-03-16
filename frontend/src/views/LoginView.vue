@@ -157,6 +157,18 @@ const onGoogleCallback = async (response: any) => {
       await storage.set('auth_user', apiResponse.data.user);
       await storage.set('user_schools', apiResponse.data.schools || []);
       
+      const availableProfiles = apiResponse.data.available_profiles || [apiResponse.data.user.role];
+      await storage.set('available_profiles', availableProfiles);
+      
+      // Determine highest priority role for initial login
+      let initialProfile = apiResponse.data.user.role;
+      if (availableProfiles.includes('super_admin')) initialProfile = 'super_admin';
+      else if (availableProfiles.includes('director')) initialProfile = 'director';
+      else if (availableProfiles.includes('teacher')) initialProfile = 'teacher';
+      else if (availableProfiles.includes('parent')) initialProfile = 'parent';
+      
+      await storage.set('current_profile', initialProfile);
+      
       // Establecer contexto inicial de escuela
       if (apiResponse.data.schools && apiResponse.data.schools.length > 0) {
         await storage.set('current_school_id', apiResponse.data.schools[0].id);
@@ -172,9 +184,9 @@ const onGoogleCallback = async (response: any) => {
       });
       await toast.present();
       
-      if (apiResponse.data.user.role === 'super_admin' || apiResponse.data.user.role === 'director' || apiResponse.data.user.role === 'teacher') {
+      if (['super_admin', 'director', 'teacher'].includes(initialProfile)) {
          router.push('/admin/dashboard'); 
-      } else if (apiResponse.data.user.role === 'parent') {
+      } else if (initialProfile === 'parent') {
          router.push('/parent/dashboard');
       } else {
          router.push('/monitor');

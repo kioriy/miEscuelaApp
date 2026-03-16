@@ -41,6 +41,9 @@ class MonitorSyncController extends Controller
 
         if ($kiosk) {
             $now = now();
+            // Heartbeat update
+            $kiosk->update(['last_sync_at' => $now]);
+            
             foreach ($kiosk->schools as $school) {
                 $pivotCreatedAt = $school->pivot->created_at;
 

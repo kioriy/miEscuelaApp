@@ -11,6 +11,13 @@ use Carbon\Carbon;
 
 class ParentDashboardController extends Controller
 {
+    private function getStudentTimezone($student) {
+        if ($student && $student->classroom && $student->classroom->school) {
+            return $student->classroom->school->timezone ?? 'America/Mexico_City';
+        }
+        return 'America/Mexico_City';
+    }
+
     public function index(Request $request)
     {
         $user = $request->user();
@@ -46,7 +53,7 @@ class ParentDashboardController extends Controller
                 'status' => $status,
                 'last_record' => $lastLog ? [
                     'type' => $mappedType, // entrada, salida
-                    'time' => Carbon::parse($lastLog->scanned_at)->format('g:i A'),
+                    'time' => Carbon::parse($lastLog->scanned_at)->setTimezone($this->getStudentTimezone($child))->format('g:i A'),
                     'location' => $lastLog->kiosk ? $lastLog->kiosk->name : 'N/A',
                     'method' => $lastLog->recorded_by_user_id ? 'Asistencia por el profesor' : 'Escaneado con credencial'
                 ] : null
@@ -60,7 +67,13 @@ class ParentDashboardController extends Controller
             ->take(10)
             ->get()
             ->map(function ($log) {
-                $parsedTime = Carbon::parse($log->scanned_at);
+                // Ensure we use the school's timezone for the time string
+                $timezone = 'America/Mexico_City';
+                if ($log->student && $log->student->classroom && $log->student->classroom->school) {
+                    $timezone = $log->student->classroom->school->timezone ?? 'America/Mexico_City';
+                }
+                
+                $parsedTime = Carbon::parse($log->scanned_at)->setTimezone($timezone);
                 $dayStr = $parsedTime->isToday() ? 'Hoy' : ($parsedTime->isYesterday() ? 'Ayer' : $parsedTime->format('d M'));
                 $mappedType = $log->type === 'in' ? 'entrada' : 'salida';
 
@@ -305,7 +318,11 @@ class ParentDashboardController extends Controller
 
         // Transformar la colección conservando la paginación
         $logs->getCollection()->transform(function ($log) {
-            $parsedTime = Carbon::parse($log->scanned_at);
+            $timezone = 'America/Mexico_City';
+            if ($log->student && $log->student->classroom && $log->student->classroom->school) {
+                $timezone = $log->student->classroom->school->timezone ?? 'America/Mexico_City';
+            }
+            $parsedTime = Carbon::parse($log->scanned_at)->setTimezone($timezone);
             $dayStr = $parsedTime->isToday() ? 'Hoy' : ($parsedTime->isYesterday() ? 'Ayer' : $parsedTime->format('d M, Y'));
             $mappedType = $log->type === 'in' ? 'entrada' : 'salida';
 

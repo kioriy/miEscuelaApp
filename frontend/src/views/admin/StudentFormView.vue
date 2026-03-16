@@ -111,6 +111,14 @@
                   Asignación Académica
                 </h3>
 
+                <div v-if="isAdmin" class="space-y-2">
+                  <label class="text-[12px] font-black text-gray-500 uppercase tracking-widest ml-1">Escuela Principal *</label>
+                  <select v-model="form.school_id" class="w-full bg-indigo-50/50 p-4 rounded-2xl outline-none font-black text-indigo-900 appearance-none border-2 border-transparent focus:border-indigo-500 transition-all cursor-pointer">
+                    <option disabled value="">Seleccione una escuela...</option>
+                    <option v-for="school in userSchools" :key="school.id" :value="school.id">{{ school.name }}</option>
+                  </select>
+                </div>
+
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
                   <div class="space-y-2">
                     <label class="text-[12px] font-black text-gray-500 uppercase tracking-widest ml-1">Nivel</label>
@@ -195,6 +203,7 @@ import {
   cardOutline, school, mailOutline 
 } from 'ionicons/icons';
 import api from '@/services/api';
+import { storage } from '@/services/storage';
 
 const route = useRoute();
 const router = useRouter();
@@ -203,8 +212,11 @@ const isEdit = computed(() => !!route.params.id);
 const submitting = ref(false);
 const photoPreview = ref<string | null>(null);
 const photoFile = ref<File | null>(null);
+const isAdmin = ref(false);
+const userSchools = ref<any[]>([]);
 
 const form = ref({
+  school_id: '',
   first_name: '',
   last_name: '',
   enrollment_code: '',
@@ -250,6 +262,9 @@ const fetchStudent = async () => {
         form.value.grade = data.classroom.grade;
         form.value.group_letter = data.classroom.group_letter;
         form.value.shift = data.classroom.shift;
+      }
+      if (data.school_id) {
+        form.value.school_id = data.school_id;
       }
       if (data.photo_url) {
         photoPreview.value = data.photo_url;
@@ -301,7 +316,37 @@ const formatDate = (dateStr: string) => {
   });
 };
 
-onMounted(fetchStudent);
+onMounted(async () => {
+  const user = await storage.get('auth_user');
+  if (user && user.role === 'super_admin') {
+    isAdmin.value = true;
+  }
+  const storedSchools = await storage.get('user_schools');
+  if (storedSchools) {
+    userSchools.value = storedSchools;
+    if (!isEdit.value && isAdmin.value) {
+      const currentId = await storage.get('current_school_id');
+      form.value.school_id = currentId || storedSchools[0]?.id || '';
+    }
+  }
+
+  // Fallback for Super Admin: always fetch master list of schools to guarantee the selector is populated
+  if (isAdmin.value) {
+    try {
+      const res = await api.get('/admin/schools');
+      if (res.data.success) {
+        userSchools.value = res.data.data;
+        if (!isEdit.value && !form.value.school_id && userSchools.value.length > 0) {
+          form.value.school_id = userSchools.value[0].id;
+        }
+      }
+    } catch (e) {
+      console.warn("Could not fetch master schools list for form selector", e);
+    }
+  }
+  
+  fetchStudent();
+});
 </script>
 
 <style scoped>

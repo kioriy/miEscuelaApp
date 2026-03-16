@@ -25,14 +25,8 @@
                <span class="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
             </button>
             <div class="h-8 w-px bg-gray-200"></div>
-            <div class="flex items-center gap-3" v-if="dashboard.user">
-               <div class="hidden sm:block text-right">
-                  <p class="text-sm font-black text-gray-900 leading-none">{{ dashboard.user.name }}</p>
-                  <p class="text-[11px] font-bold text-gray-500">{{ dashboard.user.role_label }}</p>
-               </div>
-               <button @click="handleLogout" title="Cerrar sesión" class="w-10 h-10 rounded-full bg-orange-100 overflow-hidden shrink-0 border-2 border-white shadow-sm flex items-center justify-center hover:opacity-80 transition-opacity cursor-pointer">
-                 <img :src="dashboard.user.avatar" :alt="dashboard.user.name" class="w-full h-full object-cover">
-               </button>
+            <div class="flex items-center gap-3">
+               <ProfileSwitcher variant="header" />
             </div>
           </div>
         </div>
@@ -96,7 +90,7 @@
                        <!-- Last Record Box -->
                        <div v-if="child.last_record" class="bg-gray-50/80 rounded-2xl p-4 flex items-start gap-4 mb-6 border border-gray-100/50">
                           <div :class="child.last_record.type === 'entrada' ? 'bg-blue-100 text-brand-blue' : 'bg-gray-200 text-gray-600'" class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">
-                             <ion-icon :icon="child.last_record.type === 'entrada' ? checkmarkOutline : logOutOutline" class="text-lg"></ion-icon>
+                             <ion-icon :icon="child.last_record.type === 'entrada' ? checkmarkOutline : chevronBackOutline" class="text-lg"></ion-icon>
                           </div>
                           <div>
                              <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Último Registro</p>
@@ -252,14 +246,14 @@
         <div class="max-w-7xl mx-auto px-4 py-8 text-center text-xs font-semibold text-gray-500 mb-8 mt-4">
            <div class="flex items-center justify-center gap-1.5 mb-4 text-gray-400">
                <ion-icon :icon="shieldCheckmarkOutline"></ion-icon>
-               Sistema seguro de control escolar
+               Sistema seguro de control escolar miEscuelaApp
            </div>
            <div class="flex justify-center gap-6 text-brand-blue font-bold mb-4">
              <a href="#" class="hover:underline">Ayuda</a>
              <a href="#" class="hover:underline">Privacidad</a>
              <a href="#" class="hover:underline">Contactar Soporte</a>
            </div>
-           &copy; 2026 Portal Escolar Seguro. Todos los derechos reservados.
+           &copy; 2026 miEscuelaApp. Todos los derechos reservados.
         </div>
       </ion-content>
     </div>
@@ -277,7 +271,6 @@ import {
   location,
   timeOutline,
   megaphone,
-  logOutOutline,
   addOutline,
   checkmarkCircle,
   personAdd,
@@ -285,11 +278,13 @@ import {
   warningOutline,
   shieldCheckmarkOutline,
   personOutline,
-  schoolOutline
+  schoolOutline,
+  chevronBackOutline
 } from 'ionicons/icons';
 import api from '@/services/api';
 import { useRouter } from 'vue-router';
 import { storage } from '@/services/storage';
+import ProfileSwitcher from '@/components/ProfileSwitcher.vue';
 
 const router = useRouter();
 const loading = ref(true);
@@ -324,17 +319,6 @@ onMounted(() => {
    fetchDashboardData();
 });
 
-const handleLogout = async () => {
-   try {
-      await storage.remove('auth_token');
-      await storage.remove('auth_user');
-      router.push('/login');
-   } catch (error) {
-      console.error('Logout error:', error);
-      // Fallback redirect if network error occurs
-      router.push('/login');
-   }
-};
 </script>
 
 <style scoped>

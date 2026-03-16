@@ -21,7 +21,10 @@ class AdminController extends Controller
     {
         $user = $request->user();
         $isSuperAdmin = $user->role === 'super_admin';
-        $schoolId = $this->getSchoolId($request);
+        
+        // Check if the frontend is requesting global context
+        $isGlobal = $request->query('global') === 'true';
+        $schoolId = $isGlobal ? null : $this->getSchoolId($request);
 
         $querySchools = \App\Models\School::query();
         $queryStudents = \App\Models\Student::query();
@@ -32,17 +35,21 @@ class AdminController extends Controller
             $querySchools->where('id', $schoolId);
             $queryStudents->where('school_id', $schoolId);
             // Optimization: if we have a school context, we filter users that belong to that school
-            $queryUsers->whereHas('schools', function ($q) use ($schoolId) {
-                $q->where('schools.id', $schoolId);
-            })->orWhere('school_id', $schoolId); // legacy fallback
+            $queryUsers->where(function($query) use ($schoolId) {
+                $query->whereHas('schools', function ($q) use ($schoolId) {
+                    $q->where('schools.id', $schoolId);
+                })->orWhere('school_id', $schoolId); // legacy fallback
+            });
             $queryKiosks->where('owner_school_id', $schoolId);
         } elseif ($isSuperAdmin && $schoolId) {
             // Super Admin can filter by a specific school if they want
             $querySchools->where('id', $schoolId);
             $queryStudents->where('school_id', $schoolId);
-            $queryUsers->whereHas('schools', function ($q) use ($schoolId) {
-                $q->where('schools.id', $schoolId);
-            })->orWhere('school_id', $schoolId);
+            $queryUsers->where(function($query) use ($schoolId) {
+                $query->whereHas('schools', function ($q) use ($schoolId) {
+                    $q->where('schools.id', $schoolId);
+                })->orWhere('school_id', $schoolId);
+            });
             $queryKiosks->where('owner_school_id', $schoolId);
         }
 
@@ -85,6 +92,11 @@ class AdminController extends Controller
         // Contar el número aproximado de alumnos manualmente
         foreach ($schools as $school) {
             $school->students_count = \App\Models\Student::where('school_id', $school->id)->count();
+            $school->users_count = \App\Models\User::where(function($query) use ($school) {
+                $query->whereHas('schools', function ($q) use ($school) {
+                    $q->where('schools.id', $school->id);
+                })->orWhere('school_id', $school->id);
+            })->count();
         }
 
         return response()->json([
@@ -240,6 +252,17 @@ class AdminController extends Controller
     public function showSchool($id)
     {
         $school = \App\Models\School::with('ownedKiosks', 'activeKiosks')->findOrFail($id);
+        
+        // Cargar numeralia para la vista de detalle
+        $school->students_count = \App\Models\Student::where('school_id', $school->id)->count();
+        $school->users_count = \App\Models\User::where(function($query) use ($school) {
+            $query->whereHas('schools', function($q) use ($school) {
+                $q->where('schools.id', $school->id);
+            })->orWhere('school_id', $school->id);
+        })->count();
+        $school->kiosks_count = $school->ownedKiosks()->count();
+        $school->groups_count = \App\Models\Classroom::where('school_id', $school->id)->count();
+
         return response()->json(['success' => true, 'data' => $school]);
     }
 
@@ -667,8 +690,16 @@ class AdminController extends Controller
 
     public function getStudents(Request $request)
     {
-        $schoolId = $this->getSchoolId($request);
-        $query = \App\Models\Student::with('classroom')->where('school_id', $schoolId);
+        $user = $request->user();
+        $query = \App\Models\Student::with('classroom');
+
+        if ($user && $user->role === 'super_admin') {
+            if ($request->has('school_id') && $request->school_id != '') {
+                $query->where('school_id', $request->school_id);
+            }
+        } else {
+            $query->where('school_id', $this->getSchoolId($request));
+        }
 
         if ($request->has('search')) {
             $search = $request->search;
@@ -695,17 +726,21 @@ class AdminController extends Controller
 
     public function storeStudent(Request $request)
     {
+        $user = $request->user();
+        $schoolId = ($user && $user->role === 'super_admin' && $request->has('school_id')) 
+            ? $request->school_id 
+            : $this->getSchoolId($request);
+
         $request->validate([
             'first_name' => 'required|string|max:100',
             'last_name' => 'required|string|max:100',
-            'enrollment_code' => 'required|string|unique:students,enrollment_code,NULL,id,school_id,' . $request->user()->school_id,
+            'enrollment_code' => 'required|string|unique:students,enrollment_code,NULL,id,school_id,' . $schoolId,
             'school_level' => 'required|string',
             'grade' => 'required|string',
             'group_letter' => 'required|string',
             'shift' => 'nullable|string',
         ]);
 
-        $schoolId = $this->getSchoolId($request);
         $classroom = \App\Models\Classroom::firstOrCreate([
             'school_id' => $schoolId,
             'school_level' => $request->school_level,
@@ -735,7 +770,12 @@ class AdminController extends Controller
 
     public function showStudent(Request $request, $id)
     {
-        $student = \App\Models\Student::with('classroom')->where('school_id', $this->getSchoolId($request))->findOrFail($id);
+        $user = $request->user();
+        $query = \App\Models\Student::with('classroom');
+        if (!($user && $user->role === 'super_admin')) {
+            $query->where('school_id', $this->getSchoolId($request));
+        }
+        $student = $query->findOrFail($id);
         $student->photo_url = $student->photo_path ? asset('storage/' . $student->photo_path) : null;
 
         return response()->json([
@@ -746,19 +786,27 @@ class AdminController extends Controller
 
     public function updateStudent(Request $request, $id)
     {
-        $student = \App\Models\Student::where('school_id', $this->getSchoolId($request))->findOrFail($id);
+        $user = $request->user();
+        $query = \App\Models\Student::query();
+        if (!($user && $user->role === 'super_admin')) {
+            $query->where('school_id', $this->getSchoolId($request));
+        }
+        $student = $query->findOrFail($id);
+
+        $schoolId = ($user && $user->role === 'super_admin' && $request->has('school_id')) 
+            ? $request->school_id 
+            : $student->school_id;
 
         $request->validate([
             'first_name' => 'required|string|max:100',
             'last_name' => 'required|string|max:100',
-            'enrollment_code' => 'required|string|unique:students,enrollment_code,' . $id . ',id,school_id,' . $request->user()->school_id,
+            'enrollment_code' => 'required|string|unique:students,enrollment_code,' . $id . ',id,school_id,' . $schoolId,
             'school_level' => 'required|string',
             'grade' => 'required|string',
             'group_letter' => 'required|string',
             'shift' => 'nullable|string',
         ]);
 
-        $schoolId = $this->getSchoolId($request);
         $classroom = \App\Models\Classroom::firstOrCreate([
             'school_id' => $schoolId,
             'school_level' => $request->school_level,
@@ -769,6 +817,7 @@ class AdminController extends Controller
 
         $data = $request->except(['photo_url', 'photo', 'school_level', 'grade', 'group_letter', 'shift', 'classroom', 'school', 'id', 'created_at', 'updated_at', 'deleted_at']);
         $data['classroom_id'] = $classroom->id;
+        $data['school_id'] = $schoolId;
 
         if ($request->hasFile('photo')) {
             // Delete old photo if exists
@@ -791,7 +840,12 @@ class AdminController extends Controller
 
     public function destroyStudent(Request $request, $id)
     {
-        $student = \App\Models\Student::where('school_id', $this->getSchoolId($request))->findOrFail($id);
+        $user = $request->user();
+        $query = \App\Models\Student::query();
+        if (!($user && $user->role === 'super_admin')) {
+            $query->where('school_id', $this->getSchoolId($request));
+        }
+        $student = $query->findOrFail($id);
 
         if ($student->photo_path) {
             Storage::disk('public')->delete($student->photo_path);

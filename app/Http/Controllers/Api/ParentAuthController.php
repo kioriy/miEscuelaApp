@@ -73,11 +73,37 @@ class ParentAuthController extends Controller
             // Cargar escuelas asociadas
             $user->load('schools');
 
+            // Determinar todos los perfiles disponibles para este correo
+            $available_profiles = [];
+            
+            // 1. Rol base en tabla users
+            if ($user->role) {
+                $available_profiles[] = $user->role;
+            }
+
+            // 2. Roles en la tabla pivot de escuelas (ej. un director puede ser teacher en otra)
+            foreach ($user->schools as $school) {
+                if ($school->pivot && $school->pivot->role && !in_array($school->pivot->role, $available_profiles)) {
+                    $available_profiles[] = $school->pivot->role;
+                }
+            }
+
+            // 3. Verificación de si tiene hijos registrados (rol parent)
+            if (!in_array('parent', $available_profiles)) {
+                $isTutor = Student::where('tutor_email', $email)
+                    ->orWhere('secondary_tutor_email', $email)
+                    ->exists();
+                if ($isTutor) {
+                    $available_profiles[] = 'parent';
+                }
+            }
+
             return response()->json([
                 'success' => true,
                 'token' => $token,
                 'user' => $user,
                 'schools' => $user->schools,
+                'available_profiles' => $available_profiles,
                 'message' => 'Login exitoso'
             ]);
         } catch (\Exception $e) {

@@ -11,6 +11,26 @@ class Kiosk extends Model
     use HasFactory, HasApiTokens;
 
     protected $guarded = [];
+    protected $appends = ['status'];
+
+    public function getStatusAttribute()
+    {
+        if (!$this->is_active) {
+            return 'Inactivo';
+        }
+
+        if (!$this->last_sync_at) {
+            return 'Offline';
+        }
+
+        // Si su última sincronización fue hace menos de 10 minutos
+        $lastSync = \Illuminate\Support\Carbon::parse($this->last_sync_at);
+        if ($lastSync->diffInMinutes(now()) <= 10) {
+            return 'Activo';
+        }
+
+        return 'Offline';
+    }
 
     public function ownerSchool()
     {

@@ -74,6 +74,8 @@
           </div>
           <input 
             type="text" 
+            v-model="searchQuery"
+            @input="onSearchInput"
             placeholder="Buscar profesor por nombre o correo..." 
             class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue transition-all"
           >
@@ -81,10 +83,21 @@
 
         <!-- Filter Buttons -->
         <div class="flex items-center gap-3 shrink-0">
-          <button class="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-gray-50 transition-colors shadow-sm">
-            <ion-icon :icon="filterOutline" class="text-lg"></ion-icon>
-            Filtrar por Grado
-          </button>
+          <div class="relative bg-white border border-gray-200 rounded-xl shadow-sm hover:border-gray-300 transition-colors flex items-center pr-2 group">
+            <ion-icon :icon="filterOutline" class="text-gray-400 text-lg pl-3 pr-1 group-focus-within:text-brand-blue transition-colors"></ion-icon>
+            <select v-model="selectedGrade" @change="fetchTeachers" class="bg-transparent text-gray-700 text-sm font-bold py-2.5 pr-6 w-full focus:outline-none appearance-none group-focus-within:text-brand-blue transition-colors cursor-pointer">
+              <option value="">Todos los Grados</option>
+              <option value="1">1er Grado</option>
+              <option value="2">2do Grado</option>
+              <option value="3">3er Grado</option>
+              <option value="4">4to Grado</option>
+              <option value="5">5to Grado</option>
+              <option value="6">6to Grado</option>
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+              <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+            </div>
+          </div>
           <button class="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-gray-50 transition-colors shadow-sm">
             <ion-icon :icon="checkmarkCircleOutline" class="text-lg"></ion-icon>
             Estatus
@@ -157,12 +170,12 @@
         
         <!-- Pagination Footer -->
         <div class="bg-white border-t border-gray-100 px-6 py-4 flex items-center justify-between shrink-0">
-          <span class="text-xs font-bold text-gray-500">Mostrando 4 de 30 profesores</span>
+          <span class="text-xs font-bold text-gray-500">Mostrando {{ teachers.length }} profesores</span>
           <div class="flex items-center gap-2">
-            <button class="px-3 py-1.5 text-xs font-bold text-gray-400 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors border border-transparent">
+            <button disabled class="px-3 py-1.5 text-xs font-bold text-gray-300 rounded-lg border border-transparent cursor-not-allowed">
               Anterior
             </button>
-            <button class="px-3 py-1.5 text-xs font-bold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 shadow-sm rounded-lg transition-colors">
+            <button disabled class="px-3 py-1.5 text-xs font-bold text-gray-300 bg-gray-50 border border-gray-200 shadow-sm rounded-lg cursor-not-allowed">
               Siguiente
             </button>
           </div>
@@ -186,6 +199,9 @@ import { storage } from '@/services/storage';
 const teachers = ref<any[]>([]);
 const loading = ref(true);
 const activeSchoolName = ref('');
+const searchQuery = ref('');
+const selectedGrade = ref('');
+let searchTimeout: any = null;
 
 const totalTeachersCount = computed(() => teachers.value.length);
 const presentTeachersCount = computed(() => teachers.value.filter(t => t.status === 'Presente').length);
@@ -204,7 +220,12 @@ const coveredGroupsCount = computed(() => {
 const fetchTeachers = async () => {
   loading.value = true;
   try {
-    const res = await api.get('/admin/teachers');
+    const res = await api.get('/admin/teachers', {
+      params: {
+        search: searchQuery.value,
+        grade: selectedGrade.value
+      }
+    });
     if (res.data.success) {
       teachers.value = res.data.data;
     }
@@ -213,6 +234,13 @@ const fetchTeachers = async () => {
   } finally {
     loading.value = false;
   }
+};
+
+const onSearchInput = () => {
+  if (searchTimeout) clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    fetchTeachers();
+  }, 400); // 400ms debounce
 };
 
 const deleteTeacher = async (teacher: any) => {

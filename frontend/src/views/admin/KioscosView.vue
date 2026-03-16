@@ -29,7 +29,7 @@
                 <ion-icon :icon="personOutline" class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></ion-icon>
                 <select v-model="selectedStaff" @change="fetchKioscos" class="w-full appearance-none bg-gray-50 border border-gray-200 rounded-xl pl-12 pr-10 py-3 text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-100 focus:border-brand-blue cursor-pointer">
                   <option value="">Todos los kioscos...</option>
-                  <option v-for="director in directors" :key="director.id" :value="director.id">
+                  <option v-for="director in activeDirectors" :key="director.id" :value="director.id">
                     {{ director.name }} - {{ director.schools?.map((s: any) => s.name).join(', ') || 'Sin escuela' }}
                   </option>
                 </select>
@@ -60,10 +60,9 @@
                           'border-b border-gray-50 cursor-pointer transition-colors hover:bg-gray-50/50',
                           selectedKiosk?.id === kiosk.id ? 'bg-blue-50/30 relative' : ''
                         ]">
-                      <!-- Indication line for selected -->
-                      <td v-if="selectedKiosk?.id === kiosk.id" class="absolute left-0 top-0 bottom-0 w-1 bg-brand-blue rounded-r-md"></td>
-                      
-                      <td class="p-4">
+                      <td class="p-4 relative">
+                        <!-- Indication line for selected -->
+                        <div v-if="selectedKiosk?.id === kiosk.id" class="absolute left-0 top-0 bottom-0 w-1 bg-brand-blue rounded-r-md"></div>
                         <p class="text-sm font-bold text-gray-900">{{ kiosk.name }}</p>
                         <p class="text-[11px] font-medium text-gray-400">ID: {{ kiosk.id }}</p>
                       </td>
@@ -196,6 +195,10 @@
 
             <!-- Action buttons bottom fixed -->
             <div class="p-6 border-t border-gray-100 bg-gray-50/50 flex items-center gap-3 shrink-0">
+              <button @click="resetKiosk" v-if="selectedKiosk.is_active" class="flex-1 bg-red-50 text-red-600 font-bold py-3 px-4 rounded-xl text-sm border border-red-200 shadow-sm hover:bg-red-100 transition-all text-center flex justify-center items-center gap-2">
+                <ion-icon :icon="trashOutline" class="text-lg"></ion-icon>
+                Desvincular Dispositivo
+              </button>
               <button class="flex-1 bg-white border border-gray-200 text-gray-700 font-bold py-3 px-4 rounded-xl text-sm shadow-sm hover:bg-gray-50 transition-all text-center">
                 Descargar Reporte
               </button>
@@ -225,12 +228,24 @@ import { IonPage, IonContent, IonIcon } from '@ionic/vue';
 import { 
   notifications, settings, personOutline, chevronDown, closeOutline,
   copyOutline, businessOutline, searchOutline, linkOutline, business,
-  unlinkOutline, storefrontOutline
+  unlinkOutline, storefrontOutline, trashOutline
 } from 'ionicons/icons';
 import api from '@/services/api';
 
 const selectedStaff = ref('');
 const directors = ref<any[]>([]);
+
+// Filter directors to only show those who manage schools with at least one active kiosk
+const activeDirectors = computed(() => {
+  if (allKiosks.value.length === 0) return [];
+  const activeOwnerIds = [...new Set(allKiosks.value.filter(k => k.is_active).map(k => k.owner_school_id))];
+  
+  return directors.value.filter(d => {
+    const directorSchoolIds = d.schools?.map((s: any) => s.id) || [];
+    return directorSchoolIds.some((id: any) => activeOwnerIds.includes(id));
+  });
+});
+
 const allSchools = ref<any[]>([]);
 
 const assignedKiosks = ref<any[]>([]);
@@ -372,6 +387,24 @@ const unlinkSchool = async (schoolId: number) => {
   } catch (error: any) {
     console.error('Error unlinking school', error);
     alert(error.response?.data?.message || 'Error al desvincular sede.');
+  }
+};
+
+const resetKiosk = async () => {
+  if (!selectedKiosk.value) return;
+  if (!confirm('¿Estás seguro que deseas desvincular este dispositivo? Perderá su conexión y tendrás que volver a activarlo con su PIN.')) return;
+  
+  try {
+    const res = await api.post(`/admin/kioscos/${selectedKiosk.value.id}/reset`);
+    if (res.data.success) {
+       alert(res.data.message);
+       // Refresh lists to move it to pending
+       await fetchKioscos();
+       selectedKiosk.value = null;
+    }
+  } catch (error: any) {
+    console.error('Error resetting kiosk', error);
+    alert(error.response?.data?.message || 'Hubo un error al intentar desvincular el dispositivo.');
   }
 };
 

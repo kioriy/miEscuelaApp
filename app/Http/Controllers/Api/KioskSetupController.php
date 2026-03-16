@@ -76,9 +76,6 @@ class KioskSetupController extends Controller
         $request->validate([
             'activation_code' => 'required|string|max:20',
             'device_name' => 'nullable|string|max:50',
-            'owner_school_id' => 'required|exists:schools,id',
-            'additional_school_ids' => 'nullable|array',
-            'additional_school_ids.*' => 'exists:schools,id',
         ]);
 
         $code = trim($request->activation_code);
@@ -100,30 +97,11 @@ class KioskSetupController extends Controller
             ], 403);
         }
 
-        // 2. Verificamos que la escuela dueña no haya superado su límite
-        $school = School::find($request->owner_school_id);
-
-        $activeKiosksCount = $school->ownedKiosks()->where('is_active', true)->count();
-
-        if ($activeKiosksCount >= $school->allowed_kiosks) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Límite de kioscos alcanzado para la Sede Principal. Contacta a soporte para aumentar tu plan.'
-            ], 403);
-        }
-
-        // 3. Activamos el Kiosco
+        // 2. Activamos el Kiosco
         $kiosk->update([
             'is_active' => true,
-            'name' => $request->device_name ?? 'Kiosco ' . ($activeKiosksCount + 1),
-            'owner_school_id' => $school->id,
+            'name' => $request->device_name ?? $kiosk->name
         ]);
-
-        $syncIds = collect([$school->id]);
-        if ($request->has('additional_school_ids') && is_array($request->additional_school_ids)) {
-            $syncIds = $syncIds->merge($request->additional_school_ids);
-        }
-        $kiosk->schools()->sync($syncIds->unique()->toArray());
 
         // 4. Generamos un token permanente (Sanctum) exclusivo para este Kiosco
         // Ojo: Usamos un naming diferenciado de tokens para mayor seguridad

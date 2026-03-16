@@ -81,7 +81,7 @@
               Profesores
             </router-link>
 
-            <router-link v-if="!isAdmin && !isTeacher" to="/admin/students" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/students') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
+            <router-link v-if="!isTeacher" to="/admin/students" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/students') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
               <ion-icon :icon="school" class="text-xl"></ion-icon>
               Estudiantes
             </router-link>
@@ -96,47 +96,16 @@
               Configuración
             </a>
 
-            <router-link v-if="isAdmin || userProfile.role === 'director'" to="/admin/sync-kiosk" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/sync-kiosk') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
+            <router-link v-if="isAdmin || currentProfile === 'director'" to="/admin/sync-kiosk" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/sync-kiosk') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
               <ion-icon :icon="time" class="text-xl"></ion-icon>
               Sincronizar Kiosco
             </router-link>
 
-            <!-- Accesos Rápidos Section -->
-            <div class="pt-8 pb-2 px-4">
-              <span class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Accesos Rápidos</span>
-            </div>
-
-            <a href="#" class="flex items-center justify-between px-4 py-3 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all group">
-              <div class="flex items-center gap-3 font-semibold text-sm">
-                <ion-icon :icon="notifications" class="text-xl text-gray-400 group-hover:text-amber-500"></ion-icon>
-                Alertas
-              </div>
-              <span class="bg-red-50 text-red-600 text-[10px] font-black px-1.5 py-0.5 rounded-md">3</span>
-            </a>
-
-            <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all group">
-              <ion-icon :icon="calendar" class="text-xl text-gray-400 group-hover:text-brand-blue"></ion-icon>
-              <span class="font-semibold text-sm">Calendario</span>
-            </a>
           </nav>
 
           <!-- User Profile & Logout -->
           <div class="px-4 py-6 border-t border-gray-100 mt-auto bg-white">
-            <div class="flex items-center gap-3 px-2 mb-6">
-              <div class="w-10 h-10 rounded-full bg-orange-100 overflow-hidden shrink-0 border border-gray-200 shadow-sm flex items-center justify-center">
-                <img v-if="userProfile.photo" :src="userProfile.photo" :alt="userProfile.name" class="w-full h-full object-cover">
-                <ion-icon v-else :icon="personOutline" class="text-xl text-gray-500"></ion-icon>
-              </div>
-              <div class="overflow-hidden">
-                <p class="text-[13px] font-bold text-gray-900 truncate tracking-tight">{{ userProfile.name }}</p>
-                <p class="text-[10px] text-brand-blue font-black uppercase tracking-tighter">{{ userRoleLabel }}</p>
-                <p class="text-[10px] text-gray-400 font-medium truncate mt-0.5">{{ userProfile.email }}</p>
-              </div>
-            </div>
-            <button @click="logout" class="w-full flex items-center justify-center gap-2 bg-red-50/50 border border-red-100 text-red-600 hover:bg-red-50 hover:border-red-200 transition-all py-3 rounded-xl font-bold text-sm shadow-sm">
-              <ion-icon :icon="logOutOutline" class="text-lg"></ion-icon>
-              Cerrar Sesión
-            </button>
+            <ProfileSwitcher variant="sidebar" />
           </div>
         </div>
       </aside>
@@ -165,17 +134,7 @@
             
             <div class="h-8 w-px bg-gray-200"></div>
 
-            <div class="flex items-center gap-3 cursor-pointer group hover:bg-gray-50 p-1.5 rounded-xl transition-colors">
-              <div class="w-10 h-10 rounded-full bg-orange-100 overflow-hidden shrink-0 border-2 border-white shadow-md group-hover:shadow-lg transition-shadow">
-                <img v-if="userProfile.photo" :src="userProfile.photo" :alt="userProfile.name" class="w-full h-full object-cover">
-                <ion-icon v-else :icon="personOutline" class="text-xl text-gray-500 m-auto mt-2"></ion-icon>
-              </div>
-              <div class="flex flex-col">
-                <span class="text-[14px] font-black text-gray-900 group-hover:text-brand-blue transition-colors">{{ userProfile.name }}</span>
-                <span class="text-[12px] font-semibold text-gray-500">{{ userRoleLabel }}</span>
-              </div>
-              <ion-icon :icon="chevronDownOutline" class="text-gray-400 ml-1 group-hover:text-gray-600"></ion-icon>
-            </div>
+            <ProfileSwitcher variant="sidebar" />
           </div>
         </div>
 
@@ -189,11 +148,12 @@
 import { ref, onMounted, computed } from 'vue';
 import { IonPage, IonIcon, IonRouterOutlet } from '@ionic/vue';
 import { 
-  school, grid, business, people, barChart, settings, time, logOutOutline, menuOutline, closeOutline, personOutline, notifications, calendar, storefrontOutline, chevronDownOutline, chatbubbleOutline
+  school, grid, business, people, barChart, settings, time, menuOutline, closeOutline, personOutline, notifications, calendar, storefrontOutline, chevronDownOutline, chatbubbleOutline
 } from 'ionicons/icons';
 import { useRouter } from 'vue-router';
 import { storage } from '@/services/storage';
 import SchoolSwitcher from '@/components/SchoolSwitcher.vue';
+import ProfileSwitcher from '@/components/ProfileSwitcher.vue';
 
 const router = useRouter();
 
@@ -207,44 +167,15 @@ const closeMobileMenu = () => {
   isMobileMenuOpen.value = false;
 };
 
-const userProfile = ref({
-  name: 'Cargando...',
-  role: 'user',
-  email: '',
-  photo: ''
-});
+const currentProfile = ref('user');
 
 onMounted(async () => {
-  const user = await storage.get('auth_user');
-  if (user) {
-    userProfile.value.name = user.name || 'Usuario';
-    userProfile.value.role = user.role || 'user';
-    userProfile.value.email = user.email || '';
-    
-    // Prioridad: 1. Google Avatar (avatar_url), 2. Local Photo (profile_photo_path)
-    if (user.avatar_url) {
-      userProfile.value.photo = user.avatar_url;
-    } else if (user.profile_photo_path) {
-      userProfile.value.photo = user.profile_photo_path.startsWith('http') 
-        ? user.profile_photo_path 
-        : `http://localhost:8000/storage/${user.profile_photo_path}`;
-    }
-  }
+  const profile = await storage.get('current_profile');
+  if (profile) currentProfile.value = profile;
 });
 
-const isAdmin = computed(() => userProfile.value.role === 'super_admin');
-
-const userRoleLabel = computed(() => {
-  switch(userProfile.value.role) {
-    case 'super_admin': return 'Súper Admin / Sistemas';
-    case 'director': return 'Director General';
-    case 'teacher': return 'Profesor(a)';
-    case 'parent': return 'Padre / Tutor';
-    default: return 'Usuario Registrado';
-  }
-});
-
-const isTeacher = computed(() => userProfile.value.role === 'teacher');
+const isAdmin = computed(() => currentProfile.value === 'super_admin');
+const isTeacher = computed(() => currentProfile.value === 'teacher');
 
 const formattedDate = computed(() => {
   const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' };

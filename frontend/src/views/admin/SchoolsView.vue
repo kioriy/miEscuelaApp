@@ -28,8 +28,8 @@
     </div>
 
     <!-- Stats -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-      <!-- Stat 1 -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+      <!-- Stat 1: Escuelas -->
       <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between transition-transform hover:-translate-y-1">
         <div>
           <h3 class="text-[13px] font-bold text-gray-500 mb-2">Escuelas Registradas</h3>
@@ -39,7 +39,7 @@
               <span v-else>{{ stats.schools }}</span>
             </span>
             <span class="text-[11px] font-bold text-green-700 bg-green-100/50 border border-green-200 px-2 py-0.5 rounded-full flex items-center gap-1">
-               <ion-icon :icon="trendingUpOutline"></ion-icon> Total activo
+               <ion-icon :icon="trendingUpOutline"></ion-icon> Total
             </span>
           </div>
         </div>
@@ -47,23 +47,41 @@
            <ion-icon :icon="business" class="text-[64px]"></ion-icon>
         </div>
       </div>
-      <!-- Stat 2 -->
+      <!-- Stat 2: Estudiantes -->
       <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between transition-transform hover:-translate-y-1">
         <div>
-          <h3 class="text-[13px] font-bold text-gray-500 mb-2">Estudiantes/Usuarios (Total DB)</h3>
+          <h3 class="text-[13px] font-bold text-gray-500 mb-2">Total Alumnos</h3>
           <div class="flex items-baseline gap-3">
             <span class="text-[40px] font-black text-gray-900 leading-none tracking-tight">
               <span v-if="loadingStats">...</span>
-              <span v-else>{{ stats.students + stats.users }}</span>
+              <span v-else>{{ stats.students }}</span>
             </span>
-            <span class="text-[11px] font-bold text-green-700 bg-green-100/50 border border-green-200 px-2 py-0.5 rounded-full flex items-center gap-1">
-               <ion-icon :icon="trendingUpOutline"></ion-icon> Activos
+            <span class="text-[11px] font-bold text-blue-700 bg-blue-100/50 border border-blue-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+               <ion-icon :icon="peopleOutline"></ion-icon> Registros
             </span>
           </div>
         </div>
-        <div class="text-blue-50">
+        <div class="text-indigo-50">
            <!-- SVG Cap -->
            <svg class="w-16 h-16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2.08-1.13L23 9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72l5 2.73 5-2.73v3.72z"/></svg>
+        </div>
+      </div>
+      <!-- Stat 3: Personal/Tutor -->
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between transition-transform hover:-translate-y-1">
+        <div>
+          <h3 class="text-[13px] font-bold text-gray-500 mb-2">Total Personal</h3>
+          <div class="flex items-baseline gap-3">
+            <span class="text-[40px] font-black text-gray-900 leading-none tracking-tight">
+              <span v-if="loadingStats">...</span>
+              <span v-else>{{ stats.users }}</span>
+            </span>
+            <span class="text-[11px] font-bold text-purple-700 bg-purple-100/50 border border-purple-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+               <ion-icon :icon="briefcaseOutline"></ion-icon> Cuentas
+            </span>
+          </div>
+        </div>
+        <div class="text-purple-50">
+           <ion-icon :icon="briefcaseOutline" class="text-[64px]"></ion-icon>
         </div>
       </div>
       <!-- Stat 3 -->
@@ -123,7 +141,7 @@
               <th class="p-4 pl-6">Nombre de la Escuela</th>
               <th class="p-4">Ubicación</th>
               <th class="p-4">Contacto Admin</th>
-              <th class="p-4">Estudiantes</th>
+              <th class="p-4">Alumnos / Personal</th>
               <th class="p-4">Estatus</th>
               <th class="p-4 pr-6 text-right">Acciones</th>
             </tr>
@@ -163,7 +181,10 @@
                 <p class="font-bold text-gray-900 leading-tight">{{ school.contact_phone || 'N/A' }}</p>
                 <p class="text-xs font-medium text-gray-500">Kioscos: {{ school.kiosks_count }}</p>
               </td>
-              <td class="p-4 font-black text-gray-900">{{ school.students_count || 0 }}</td>
+              <td class="p-4">
+                <p class="font-black text-gray-900"><ion-icon :icon="peopleOutline" class="mr-1"></ion-icon>{{ school.students_count || 0 }}</p>
+                <p class="text-[11px] font-bold text-gray-500"><ion-icon :icon="briefcaseOutline" class="mr-1"></ion-icon>{{ school.users_count || 0 }}</p>
+              </td>
               <td class="p-4">
                 <span class="bg-green-100/50 border border-green-200 text-green-700 text-[11px] px-2.5 py-1 rounded-full font-bold flex items-center w-max gap-1.5">
                   <div class="w-1.5 h-1.5 rounded-full bg-green-500"></div> Activa
@@ -203,13 +224,38 @@
           </div>
         </div>
         
-        <!-- School Selector for Import -->
-        <div class="w-full md:w-64">
-           <label class="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Escuela de Destino</label>
-           <select v-model="importSchoolId" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-100 outline-none">
-             <option value="">Seleccionar escuela...</option>
-             <option v-for="s in schools" :key="s.id" :value="s.id">{{ s.name }}</option>
-           </select>
+        <!-- School Selector for Import (Autocomplete/Predictivo) -->
+        <div class="relative w-full md:w-80" @click.stop>
+           <label class="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Escuela de Destino (Búsqueda)</label>
+           
+           <div class="relative">
+             <ion-icon :icon="searchOutline" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-base"></ion-icon>
+             <input 
+               type="text" 
+               v-model="importSchoolSearch"
+               @focus="isImportSchoolDropdownOpen = true"
+               @blur="handleImportSchoolBlur"
+               placeholder="Escribe el nombre de la escuela..." 
+               class="pl-10 pr-4 py-2.5 w-full bg-gray-50 border border-gray-200 rounded-xl text-[13px] font-bold text-gray-700 outline-none focus:bg-white focus:border-brand-blue focus:ring-2 focus:ring-blue-100 transition-all placeholder:font-medium placeholder:text-gray-400"
+             />
+             <ion-icon :icon="chevronDown" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-sm transition-transform duration-200" :class="{'rotate-180 text-brand-blue': isImportSchoolDropdownOpen}"></ion-icon>
+           </div>
+           
+           <!-- Dropdown Menú Predictivo -->
+           <div v-show="isImportSchoolDropdownOpen" class="absolute z-50 w-full mt-1.5 bg-white border border-gray-100 rounded-xl shadow-xl shadow-blue-900/5 max-h-[300px] overflow-y-auto animate-fade-in-down origin-top custom-scrollbar">
+             <div v-if="filteredImportSchools.length === 0" class="p-4 text-[13px] font-medium text-gray-400 text-center">No se encontraron escuelas que coincidan.</div>
+             <div 
+               v-else 
+               v-for="s in filteredImportSchools" 
+               :key="s.id" 
+               @mousedown.prevent="selectImportSchool(s)"
+               class="px-4 py-3 cursor-pointer text-[13px] font-bold text-gray-700 transition-colors border-b border-gray-50/50 last:border-0 hover:bg-blue-50/80 hover:text-brand-blue flex items-center justify-between group"
+               :class="{'bg-blue-50 text-brand-blue': importSchoolId === s.id}"
+             >
+               <span class="truncate pr-4">{{ s.name }}</span>
+               <div v-if="importSchoolId === s.id" class="w-2 h-2 rounded-full bg-brand-blue shrink-0"></div>
+             </div>
+           </div>
         </div>
       </div>
 
@@ -293,7 +339,8 @@ import { IonPage, IonContent, IonIcon, IonRefresher, IonRefresherContent } from 
 import { 
   addOutline, trendingUpOutline, business, push, documentText, grid,
   listOutline, searchOutline, filterOutline, locationOutline, eyeOutline, 
-  createOutline, documentTextOutline, navigateCircleOutline, refreshOutline
+  createOutline, documentTextOutline, navigateCircleOutline, refreshOutline,
+  chevronDown, peopleOutline, briefcaseOutline
 } from 'ionicons/icons';
 import api from '@/services/api';
 import { storage } from '@/services/storage';
@@ -316,10 +363,39 @@ const statusFilter = ref('all');
 
 // Bulk Import State
 const importSchoolId = ref('');
+const importSchoolSearch = ref('');
+const isImportSchoolDropdownOpen = ref(false);
+
 const isDragging = ref(false);
 const isUploading = ref(false);
 const importResults = ref<any>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
+
+const filteredImportSchools = computed(() => {
+  if (!importSchoolSearch.value) return schools.value;
+  const q = importSchoolSearch.value.toLowerCase().trim();
+  return schools.value.filter(s => String(s.name || '').toLowerCase().includes(q));
+});
+
+const selectImportSchool = (school: any) => {
+  importSchoolId.value = school.id;
+  importSchoolSearch.value = school.name;
+  isImportSchoolDropdownOpen.value = false;
+};
+
+const handleImportSchoolBlur = () => {
+  setTimeout(() => {
+    isImportSchoolDropdownOpen.value = false;
+    // Si hay un ID seleccionado, restauramos su nombre al hacer blur (por si escribió algo pero no seleccionó nada)
+    const selected = schools.value.find(s => s.id === importSchoolId.value);
+    if (selected) {
+      importSchoolSearch.value = selected.name;
+    } else {
+      // Si no hay ID válido seleccionado, borra la caja de búsqueda
+      importSchoolSearch.value = '';
+    }
+  }, 150);
+};
 
 const triggerFileUpload = () => {
   if (fileInput.value) {
@@ -353,7 +429,7 @@ const filteredSchools = computed(() => {
 
 const fetchDashboardStats = async () => {
   try {
-    const res = await api.get('/admin/stats');
+    const res = await api.get('/admin/stats?global=true');
     if (res.data.success) {
       stats.value = res.data.data;
     }

@@ -17,13 +17,34 @@ class TeacherController extends Controller
     public function index(Request $request)
     {
         $schoolId = $this->getSchoolId($request);
+        $search = $request->input('search');
+        $grade = $request->input('grade');
 
-        $teachers = User::whereHas('schools', function ($q) use ($schoolId) {
-            $q->where('schools.id', $schoolId);
-        })->orWhere('school_id', $schoolId)
-            ->where('role', 'teacher')
-            ->with('teacherGroups.classroom')
-            ->get();
+        $teachers = User::where(function($q) use ($schoolId) {
+            // Include users who are natively 'teacher' for this school
+            $q->where(function($subq) use ($schoolId) {
+                $subq->where('school_id', $schoolId)
+                     ->where('role', 'teacher');
+            })
+            // Or users who have the 'teacher' role in the pivot table for this school
+            ->orWhereHas('schools', function($sq) use ($schoolId) {
+                $sq->where('schools.id', $schoolId)
+                   ->where('school_user.role', 'teacher');
+            });
+        })
+        ->when($search, function($q) use ($search) {
+            $q->where(function($subq) use ($search) {
+                $subq->where('name', 'LIKE', "%{$search}%")
+                     ->orWhere('email', 'LIKE', "%{$search}%");
+            });
+        })
+        ->when($grade, function($q) use ($grade) {
+            $q->whereHas('teacherGroups.classroom', function($sq) use ($grade) {
+                $sq->where('grade', $grade);
+            });
+        })
+        ->with('teacherGroups.classroom')
+        ->get();
 
         // Map data for the frontend
         $mapped = $teachers->map(function ($teacher) {

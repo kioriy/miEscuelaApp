@@ -68,7 +68,7 @@
               <div class="flex-1 min-w-0">
                 <h2 class="text-2xl font-black text-gray-900 tracking-tight mb-1">{{ school.name }}</h2>
                 <p class="text-gray-500 font-medium text-[15px] mb-3">
-                  <span v-if="school.cct" class="text-brand-blue font-bold">CCT: {{ school.cct }}</span>
+                  <span v-if="school.cct" class="text-brand-blue font-bold uppercase">CCT: {{ school.cct }}</span>
                   <span v-else class="text-gray-400">Sin CCT</span>
                   <span class="mx-2 text-gray-300">•</span>
                   ID: sch_{{ school.id }}
@@ -129,7 +129,7 @@
                   </div>
                   <div>
                     <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Clave CCT</p>
-                    <p class="text-[15px] font-bold text-gray-900">{{ school.cct || '—' }}</p>
+                    <p class="text-[15px] font-bold text-gray-900 uppercase">{{ school.cct || '—' }}</p>
                   </div>
                 </div>
 
@@ -181,6 +181,16 @@
                   <div>
                     <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Fecha de Registro</p>
                     <p class="text-[15px] font-bold text-gray-900">{{ formatDate(school.created_at) }}</p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <div class="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center shrink-0 mt-0.5">
+                    <ion-icon :icon="barcodeOutline" class="text-purple-600 text-lg"></ion-icon>
+                  </div>
+                  <div>
+                    <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Modo Escáner QR</p>
+                    <p class="text-[15px] font-bold text-gray-900">{{ scanTypeLabel }}</p>
                   </div>
                 </div>
               </div>
@@ -236,7 +246,7 @@ import { IonPage, IonContent, IonIcon, alertController } from '@ionic/vue';
 import {
   homeOutline, chevronForward, createOutline, arrowBackOutline,
   businessOutline, cardOutline, locationOutline, navigateCircleOutline,
-  callOutline, timeOutline, calendarOutline, trashOutline
+  callOutline, timeOutline, calendarOutline, trashOutline, barcodeOutline
 } from 'ionicons/icons';
 import api from '@/services/api';
 
@@ -251,6 +261,17 @@ const logoUrl = computed(() => {
   return school.value.logo_path.startsWith('http')
     ? school.value.logo_path
     : `http://localhost:8000/storage/${school.value.logo_path}`;
+});
+
+const scanTypeLabel = computed(() => {
+  if (!school.value?.qr_scan_type) return 'Solo Matrícula (ID puro)';
+  const types: Record<string, string> = {
+    'raw_id': 'Solo Matrícula (ID puro)',
+    'hash_split': 'URL con Hash (#)',
+    'query_param': 'Parámetro URL (?id=)',
+    'sep_url': 'URL Portal SEP Jalisco'
+  };
+  return types[school.value.qr_scan_type] || 'Solo Matrícula (ID puro)';
 });
 
 const formatDate = (dateStr: string) => {
