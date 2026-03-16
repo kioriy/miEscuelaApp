@@ -8,10 +8,13 @@
           <div class="max-w-4xl mx-auto">
             <h1 class="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
               <ion-icon :icon="chatbubbleOutline" class="text-brand-blue"></ion-icon>
-              Mensajería Institucional
+              {{ isDirector ? 'Mensajería Institucional' : 'Enviar Mensaje' }}
             </h1>
             <p class="text-gray-500 font-medium mt-1 text-sm md:text-base">
-              Como Director, puede enviar avisos a toda la escuela, grupos específicos o alumnos individuales.
+              {{ isDirector 
+                ? 'Como Director, puede enviar avisos a toda la escuela, grupos específicos o alumnos individuales.' 
+                : 'Envíe avisos o circulares a padres de familia por grupo o alumno.' 
+              }}
             </p>
           </div>
         </div>
@@ -24,8 +27,9 @@
               <!-- Target Type Selector -->
               <div>
                 <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Alcance del Mensaje</label>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div :class="isDirector ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2'" class="grid gap-4">
                   <button 
+                    v-if="isDirector"
                     @click="formData.type = 'all_school'; formData.target_id = 'all'"
                     :class="formData.type === 'all_school' ? 'border-brand-blue bg-blue-50 text-brand-blue shadow-md' : 'border-gray-100 bg-gray-50 text-gray-500 hover:bg-gray-100'"
                     class="flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all group shrink-0"
@@ -141,7 +145,7 @@
                 >
                   <ion-icon v-if="!loading" :icon="paperPlaneOutline"></ion-icon>
                   <div v-else class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  {{ loading ? 'Emitiendo Circular...' : 'Enviar Mensaje Institucional' }}
+                  {{ loading ? 'Emitiendo Circular...' : (isDirector ? 'Enviar Mensaje Institucional' : 'Enviar Mensaje a Padres') }}
                 </button>
               </div>
 
@@ -150,11 +154,11 @@
           </div>
         </div>
 
-        <!-- History Preview -->
-        <div class="px-4 md:px-8 mt-12 mb-12">
+        <!-- History Preview (Only for Directors for now or adjust logic) -->
+        <div v-if="isDirector" class="px-4 md:px-8 mt-12 mb-12">
           <div class="max-w-4xl mx-auto">
             <h3 class="text-xl font-black text-gray-900 tracking-tight mb-6 flex items-center gap-2">
-              <ion-icon :icon="historyOutline" class="text-gray-400"></ion-icon>
+              <ion-icon :icon="timeOutline" class="text-gray-400"></ion-icon>
               Últimos Mensajes Enviados
             </h3>
             
@@ -201,7 +205,7 @@
           </div>
           <h2 class="text-2xl font-black text-gray-900 mb-2 tracking-tight">Circular Emitida</h2>
           <p class="text-gray-500 font-medium mb-8 leading-relaxed">El mensaje se ha procesado exitosamente y estará disponible para los padres de familia.</p>
-          <button @click="showSuccessModal = false" class="w-full bg-gray-900 text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-black transition-all active:scale-[0.98]">
+          <button @click="closeSuccess" class="w-full bg-gray-900 text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-black transition-all active:scale-[0.98]">
             Entendido
           </button>
         </div>
@@ -225,10 +229,13 @@ import {
   closeCircleOutline,
   chevronDownOutline,
   alertCircleOutline,
-  historyOutline
+  timeOutline
 } from 'ionicons/icons';
 import api from '@/services/api';
+import { storage } from '@/services/storage';
+import { useRouter } from 'vue-router';
 
+const router = useRouter();
 const loading = ref(false);
 const historyLoading = ref(false);
 const showSuccessModal = ref(false);
@@ -239,16 +246,37 @@ const history = ref<any[]>([]);
 const studentSearch = ref('');
 const selectedStudent = ref<any>(null);
 
+const currentProfile = ref('');
+const isDirector = computed(() => currentProfile.value === 'director');
+
 const formData = ref({
-  type: 'all_school',
-  target_id: 'all',
+  type: 'group',
+  target_id: '',
   title: '',
   content: ''
 });
 
+const loadProfile = async () => {
+  const profile = await storage.get('current_profile');
+  if (profile) {
+    currentProfile.value = profile;
+    // Default form type based on role
+    if (profile === 'director') {
+      formData.value.type = 'all_school';
+      formData.value.target_id = 'all';
+    } else {
+      formData.value.type = 'group';
+    }
+  }
+};
+
 const fetchContext = async () => {
   try {
-    const res = await api.get('/admin/director/messaging/context');
+    const endpoint = isDirector.value 
+      ? '/admin/director/messaging/context' 
+      : '/admin/teacher/messaging/context';
+      
+    const res = await api.get(endpoint);
     if (res.data.success) {
       classrooms.value = res.data.data.classrooms;
       students.value = res.data.data.students;
@@ -259,6 +287,8 @@ const fetchContext = async () => {
 };
 
 const fetchHistory = async () => {
+  if (!isDirector.value) return;
+  
   historyLoading.value = true;
   try {
     const res = await api.get('/admin/director/messaging/history');
@@ -272,7 +302,8 @@ const fetchHistory = async () => {
   }
 };
 
-onMounted(() => {
+onMounted(async () => {
+  await loadProfile();
   fetchContext();
   fetchHistory();
 });
@@ -302,11 +333,15 @@ const submitMessage = async () => {
   
   try {
     loading.value = true;
-    const res = await api.post('/admin/director/messaging/send', formData.value);
+    const endpoint = isDirector.value 
+      ? '/admin/director/messaging/send' 
+      : '/admin/teacher/messaging/send';
+      
+    const res = await api.post(endpoint, formData.value);
     if (res.data.success) {
       showSuccessModal.value = true;
       resetForm();
-      fetchHistory();
+      if (isDirector.value) fetchHistory();
     }
   } catch (error: any) {
     console.error('Error sending message:', error);
@@ -318,20 +353,22 @@ const submitMessage = async () => {
 
 const resetForm = () => {
   formData.value = {
-    type: 'all_school',
-    target_id: 'all',
+    type: isDirector.value ? 'all_school' : 'group',
+    target_id: isDirector.value ? 'all' : '',
     title: '',
     content: ''
   };
   selectedStudent.value = null;
   studentSearch.value = '';
 };
+
+const closeSuccess = () => {
+  showSuccessModal.value = false;
+  router.push('/admin/dashboard');
+};
 </script>
 
 <style scoped>
-.font-sans {
-  font-family: 'Outfit', sans-serif, system-ui;
-}
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out;
 }

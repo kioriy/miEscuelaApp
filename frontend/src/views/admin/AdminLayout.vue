@@ -56,7 +56,7 @@
               Panel Principal
             </router-link>
 
-            <router-link v-if="currentProfile === 'teacher' || currentProfile === 'director'" :to="currentProfile === 'teacher' ? '/admin/teacher/messaging' : '/admin/messaging'" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/messaging') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
+            <router-link v-if="isTeacher || isDirector" to="/admin/messaging" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/messaging') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
               <ion-icon :icon="chatbubbleOutline" class="text-xl"></ion-icon>
               Mensajes
             </router-link>
@@ -96,7 +96,7 @@
               Configuración
             </a>
 
-            <router-link v-if="isAdmin || currentProfile === 'director'" to="/admin/sync-kiosk" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/sync-kiosk') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
+            <router-link v-if="isAdmin || isDirector" to="/admin/sync-kiosk" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/sync-kiosk') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
               <ion-icon :icon="time" class="text-xl"></ion-icon>
               Sincronizar Kiosco
             </router-link>
@@ -175,6 +175,8 @@ onMounted(async () => {
 });
 
 const isAdmin = computed(() => currentProfile.value === 'super_admin');
+const isTeacher = computed(() => currentProfile.value === 'teacher');
+const isDirector = computed(() => currentProfile.value === 'director');
 
 const formattedDate = computed(() => {
   const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' };

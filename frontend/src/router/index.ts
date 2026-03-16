@@ -16,6 +16,7 @@ import StudentsView from '../views/admin/StudentsView.vue';
 import StudentDetailView from '../views/admin/StudentDetailView.vue';
 import StudentFormView from '../views/admin/StudentFormView.vue';
 import TimeSyncView from '../views/admin/TimeSyncView.vue';
+import InstitutionalMessagingView from '../views/admin/InstitutionalMessagingView.vue';
 import { storage, storageReady } from '@/services/storage';
 
 const routes: Array<RouteRecordRaw> = [
@@ -82,13 +83,13 @@ const routes: Array<RouteRecordRaw> = [
       },
       {
         path: 'messaging',
-        name: 'DirectorMessaging',
-        component: () => import('../views/admin/DirectorMessagingView.vue')
+        name: 'InstitutionalMessaging',
+        component: InstitutionalMessagingView
       },
       {
         path: 'teacher/messaging',
         name: 'TeacherMessaging',
-        component: () => import('../views/admin/TeacherMessagingView.vue')
+        component: InstitutionalMessagingView
       },
       {
         path: 'schools',
