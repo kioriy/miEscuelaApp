@@ -658,6 +658,7 @@ class AdminController extends Controller
                 'attendanceRate' => $attendanceRate,
                 'attendanceTrend' => $attendanceRate >= $prevRate ? '+' . ($attendanceRate - $prevRate) : '-' . ($prevRate - $attendanceRate),
                 'absentCount' => $absent,
+                'lateCount' => $late,
                 'unclosedCount' => $unclosedCount,
                 'staffPresent' => $staffPresent,
                 'totalStaff' => $totalStaff,
@@ -671,6 +672,77 @@ class AdminController extends Controller
             ]
         ]);
     }
+
+    /**
+     * Full Staff Status list for the director view.
+     */
+    public function getStaffStatus(Request $request)
+    {
+        $schoolId = $this->getSchoolId($request);
+
+        if (!$schoolId) {
+            return response()->json(['success' => false, 'message' => 'No se ha seleccionado una escuela.'], 403);
+        }
+
+        $school = \App\Models\School::find($schoolId);
+        $timezone = $school && $school->timezone ? $school->timezone : 'America/Mexico_City';
+
+        $localStart = $request->query('local_start');
+        if ($localStart) {
+            $localTodayStart = \Illuminate\Support\Carbon::parse(substr($localStart, 0, 10), $timezone)->startOfDay();
+        } else {
+            $localTodayStart = now($timezone)->startOfDay();
+        }
+
+        $today = $localTodayStart->copy()->setTimezone('UTC');
+        $tomorrow = $localTodayStart->copy()->addDay()->setTimezone('UTC');
+
+        $staffMembers = \App\Models\User::where(function($q) use ($schoolId) {
+                $q->where('school_id', $schoolId)
+                  ->orWhereHas('schools', function($sq) use ($schoolId) {
+                      $sq->where('schools.id', $schoolId)->where('school_user.role', 'teacher');
+                  });
+            })
+            ->where('role', 'teacher')
+            ->orderBy('name')
+            ->get();
+
+        $latestTeacherLogs = \App\Models\TeacherAttendanceLog::where('school_id', $schoolId)
+            ->where('scanned_at', '>=', $today)
+            ->where('scanned_at', '<', $tomorrow)
+            ->orderBy('scanned_at', 'desc')
+            ->get()
+            ->groupBy('user_id');
+
+        $staffData = $staffMembers->map(function($teacher) use ($latestTeacherLogs, $timezone) {
+            $userLogs = $latestTeacherLogs->get($teacher->id);
+            $lastLog = $userLogs ? $userLogs->first() : null;
+            $entryLog = $userLogs ? $userLogs->where('type', 'in')->last() : null;
+
+            return [
+                'id' => $teacher->id,
+                'name' => $teacher->name,
+                'email' => $teacher->email,
+                'avatar_url' => $teacher->avatar_url ?: ($teacher->profile_photo_path ? asset('storage/' . $teacher->profile_photo_path) : null),
+                'status' => ($lastLog && $lastLog->type === 'in') ? 'present' : 'absent',
+                'time' => $entryLog ? $entryLog->scanned_at->setTimezone($timezone)->format('h:i A') : '---',
+            ];
+        });
+
+        $present = $staffData->where('status', 'present')->count();
+        $absent = $staffData->where('status', 'absent')->count();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'staff' => $staffData->values(),
+                'present' => $present,
+                'absent' => $absent,
+                'total' => $staffMembers->count()
+            ]
+        ]);
+    }
+
     public function getUnclosedAttendance(Request $request)
     {
         $school_id = $this->getSchoolId($request) ?: $request->user()->school_id;
@@ -701,6 +773,13 @@ class AdminController extends Controller
             ->where('attendance_logs.type', 'in')
             ->where('attendance_logs.school_id', $school_id)
             ->get();
+
+        // Add photo_url to each student
+        $unclosedRecords->each(function ($record) {
+            if ($record->student && $record->student->photo_path) {
+                $record->student->photo_url = asset('storage/' . $record->student->photo_path);
+            }
+        });
 
         return response()->json([
             'success' => true,

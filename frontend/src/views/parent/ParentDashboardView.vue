@@ -19,11 +19,6 @@
             <button @click="fetchDashboardData" :disabled="loading" class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors relative disabled:opacity-50">
                <ion-icon :icon="refreshOutline" :class="{'animate-spin': loading}" class="text-xl"></ion-icon>
             </button>
-            <button class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors relative">
-               <ion-icon :icon="notificationsOutline" class="text-xl"></ion-icon>
-               <!-- Notification Dot -->
-               <span class="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-            </button>
             <div class="h-8 w-px bg-gray-200"></div>
             <div class="flex items-center gap-3">
                <ProfileSwitcher variant="header" />
@@ -187,12 +182,13 @@
                         <ion-icon :icon="megaphone" class="text-brand-blue"></ion-icon>
                         Avisos Escolares
                      </h2>
-                     <span v-if="dashboard.announcements && dashboard.announcements.length > 0" class="bg-red-50 text-red-500 font-bold text-[10px] px-2.5 py-1 rounded-lg uppercase tracking-wider">
-                        {{ dashboard.announcements.length }} Nuevos
+                     <span v-if="dashboard.announcements && dashboard.announcements.length > 0" class="bg-blue-50 text-brand-blue font-bold text-[10px] px-2.5 py-1 rounded-lg uppercase tracking-wider">
+                        {{ dashboard.announcements.length }} Hoy
                      </span>
                   </div>
 
-                  <div class="space-y-4" v-if="dashboard.announcements && dashboard.announcements.length > 0">
+                  <!-- Scrollable container: max ~3 cards visible -->
+                  <div v-if="dashboard.announcements && dashboard.announcements.length > 0" class="space-y-4 max-h-[320px] overflow-y-auto pr-1 custom-scrollbar">
                      <div v-for="ann in dashboard.announcements" :key="ann.id" class="p-4 rounded-2xl bg-gray-50 border border-gray-100 flex items-start gap-4">
                         <div :class="`bg-${ann.color}-100 text-${ann.color}-500`" class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0">
                            <ion-icon :icon="getIconMap(ann.icon)" class="text-lg"></ion-icon>
@@ -206,10 +202,10 @@
                   </div>
                   
                   <div v-else class="text-center py-6">
-                     <p class="text-sm font-bold text-gray-400">No hay avisos recientes</p>
+                     <p class="text-sm font-bold text-gray-400">No hay avisos del día de hoy</p>
                   </div>
 
-                  <button v-if="dashboard.announcements && dashboard.announcements.length > 0" class="w-full mt-6 text-brand-blue font-black text-sm hover:underline py-2">
+                  <button @click="$router.push('/parent/messages')" class="w-full mt-6 text-brand-blue font-black text-sm hover:underline py-2">
                      Ver todos los avisos
                   </button>
                </div>
@@ -264,7 +260,6 @@
 import { ref, onMounted } from 'vue';
 import { IonPage, IonContent, IonIcon } from '@ionic/vue';
 import { 
-  notificationsOutline, 
   refreshOutline,
   ellipsisVertical,
   checkmarkOutline,
@@ -334,4 +329,15 @@ onMounted(() => {
 .text-blue-500 { color: #3b82f6; }
 .bg-orange-100 { background-color: #ffedd5; }
 .text-orange-500 { color: #f97316; }
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 10px;
+}
 </style>

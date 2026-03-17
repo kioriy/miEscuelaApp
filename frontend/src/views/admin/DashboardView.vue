@@ -140,7 +140,26 @@
               </div>
             </div>
 
-            <!-- New Card 4: Salidas Pendientes -->
+            <!-- Card 4: Retardos -->
+            <div class="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-md transition-all">
+              <div class="flex justify-between items-start mb-4">
+                <div>
+                  <p class="text-[13px] font-bold text-gray-400 tracking-wide mb-1">Retardos</p>
+                  <h3 class="text-4xl font-black text-gray-900 tracking-tighter">
+                    <span v-if="loading">...</span>
+                    <span v-else>{{ directorStats.lateCount }}</span>
+                  </h3>
+                </div>
+                <div class="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform">
+                  <ion-icon :icon="timeOutline" class="text-2xl"></ion-icon>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5 text-amber-600 font-black text-[13px]">
+                <span>{{ directorStats.lateCount > 0 ? 'Llegaron tarde hoy' : 'Sin retardos hoy' }}</span>
+              </div>
+            </div>
+
+            <!-- Card 5: Salidas Pendientes -->
             <div @click="showUnclosedModal = true" class="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-md transition-all cursor-pointer border-l-4 border-l-amber-400">
               <div class="flex justify-between items-start mb-4">
                 <div>
@@ -325,7 +344,7 @@
             </div>
 
             <div class="mt-10 pt-6 border-t border-gray-50 text-center">
-               <a href="#" class="text-brand-blue font-black text-sm uppercase tracking-widest hover:underline">Ver lista completa de personal</a>
+               <router-link to="/admin/staff-status" class="text-brand-blue font-black text-sm uppercase tracking-widest hover:underline">Ver lista completa de personal</router-link>
             </div>
           </div>
         </div>
@@ -400,7 +419,7 @@ import TeacherDashboard from '@/components/admin/TeacherDashboard.vue';
 import { 
   trendingUpOutline, business, school, megaphoneOutline, documentTextOutline, peopleOutline, 
   checkmarkCircleOutline, banOutline, personAddOutline, ellipsisVerticalOutline, personOutline,
-  logOutOutline, closeOutline, timeOutline, refreshOutline
+  logOutOutline, closeOutline, timeOutline, refreshOutline, alarmOutline
 } from 'ionicons/icons';
 import api from '@/services/api';
 import { storage } from '@/services/storage';
@@ -431,6 +450,7 @@ const directorStats = ref({
   attendanceRate: 0,
   attendanceTrend: '+0',
   absentCount: 0,
+  lateCount: 0,
   unclosedCount: 0,
   staffPresent: 0,
   totalStaff: 0,

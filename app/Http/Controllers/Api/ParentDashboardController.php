@@ -87,11 +87,10 @@ class ParentDashboardController extends Controller
                 ];
             });
 
-        // 3. Fetch Announcements (General or targeted to these students/classrooms)
-        // For now, grabbing the latest 5 active announcements
+        // 3. Fetch Announcements — only today's messages for the dashboard
         $announcements = DB::table('announcements')
+            ->whereDate('created_at', now()->toDateString())
             ->orderBy('created_at', 'desc')
-            ->take(5)
             ->get()
             ->map(function ($ann) {
                 $parsed = Carbon::parse($ann->created_at);
@@ -148,6 +147,43 @@ class ParentDashboardController extends Controller
                 'announcements' => $announcements,
                 'authorized_persons' => $authorizedPersons
             ]
+        ]);
+    }
+
+    /**
+     * Get all announcements (paginated) for the full messages view.
+     */
+    public function getAnnouncements(Request $request)
+    {
+        $announcements = DB::table('announcements')
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
+
+        $announcements->getCollection()->transform(function ($ann) {
+            $parsed = Carbon::parse($ann->created_at);
+
+            $icon = 'calendarOutline';
+            $color = 'blue';
+            if (stripos($ann->title, 'salida') !== false || stripos($ann->title, 'aviso') !== false) {
+                $icon = 'warningOutline';
+                $color = 'orange';
+            }
+
+            return [
+                'id' => $ann->id,
+                'title' => $ann->title,
+                'message' => $ann->content,
+                'time_ago' => $parsed->diffForHumans(),
+                'date' => $parsed->format('d M, Y'),
+                'time' => $parsed->format('g:i A'),
+                'icon' => $icon,
+                'color' => $color
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $announcements
         ]);
     }
 

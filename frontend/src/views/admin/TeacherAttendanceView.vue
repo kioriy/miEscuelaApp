@@ -90,22 +90,10 @@
             </div>
           </TransitionGroup>
           
-          <!-- Divider & Finalize Section Context -->
-          <div v-if="!loading" class="pt-8 pb-4 text-center max-w-sm mx-auto animate-fade-in">
-            <div class="h-px bg-gray-200 w-full mb-8"></div>
-            <p class="text-xs md:text-sm text-gray-500 font-medium mb-6">
-              Al finalizar, los alumnos que permanezcan en esta lista serán registrados como Ausentes.
-            </p>
-            <button 
-              @click="finalizeAttendance"
-              :disabled="finalizing"
-              class="w-full bg-brand-blue hover:bg-blue-600 text-white font-black px-6 py-3.5 rounded-xl shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2 text-base md:text-lg disabled:opacity-75 disabled:cursor-not-allowed"
-            >
-              <ion-icon :icon="finalizing ? timeOutline : checkmarkCircleOutline" :class="{'animate-spin': finalizing}"></ion-icon>
-              {{ finalizing ? 'Finalizando...' : 'Finalizar Pase de Lista' }}
-            </button>
-            <router-link to="/admin/teacher/dashboard" class="inline-block mt-4 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors">
-              Cancelar y volver al panel
+          <!-- Back to panel link -->
+          <div v-if="!loading" class="pt-8 pb-4 text-center max-w-sm mx-auto">
+            <router-link to="/admin/teacher/dashboard" class="inline-block text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors">
+              ← Volver al panel
             </router-link>
           </div>
 
@@ -161,7 +149,7 @@
                v-model="justifyNotes"
                rows="3" 
                placeholder="Ej: Estudiante se reportó enfermo..."
-               class="w-full border border-gray-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-brand-blue transition-all resize-none text-sm"
+               class="w-full border border-gray-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-brand-blue transition-all resize-none text-sm text-white"
              ></textarea>
           </div>
           <div class="flex gap-3">
@@ -201,7 +189,6 @@ const router = useRouter();
 const classroomId = route.params.classroomId;
 
 const loading = ref(true);
-const finalizing = ref(false);
 const processingId = ref<number | null>(null);
 const searchQuery = ref('');
 
@@ -317,20 +304,7 @@ const submitJustify = async () => {
   }
 };
 
-const finalizeAttendance = async () => {
-  finalizing.value = true;
-  try {
-    const res = await api.post(`/admin/teacher/attendance/${classroomId}/finalize`);
-    if (res.data.success) {
-      showToast(res.data.message || 'Pase de lista finalizado');
-      router.push('/admin/teacher/dashboard');
-    }
-  } catch (err) {
-    console.error("Failed to finalize attendance", err);
-    showToast('Error al finalizar el pase de lista', 'danger');
-    finalizing.value = false;
-  }
-};
+
 
 onMounted(() => {
   loadPending();

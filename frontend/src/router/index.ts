@@ -58,6 +58,12 @@ const routes: Array<RouteRecordRaw> = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/parent/messages',
+    name: 'ParentMessages',
+    component: () => import('../views/parent/ParentMessagesView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/admin',
     component: AdminLayout,
     meta: { requiresAuth: true },
@@ -180,6 +186,11 @@ const routes: Array<RouteRecordRaw> = [
         path: 'sync-kiosk',
         name: 'TimeSync',
         component: TimeSyncView
+      },
+      {
+        path: 'staff-status',
+        name: 'StaffStatus',
+        component: () => import('../views/admin/StaffStatusView.vue')
       }
     ]
   }

@@ -22,6 +22,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/parent/students', [\App\Http\Controllers\Api\ParentDashboardController::class, 'getStudents']);
     Route::post('/parent/authorized-persons', [\App\Http\Controllers\Api\ParentDashboardController::class, 'storeAuthorizedPerson']);
     Route::get('/parent/history', [\App\Http\Controllers\Api\ParentDashboardController::class, 'getHistory']);
+    Route::get('/parent/announcements', [\App\Http\Controllers\Api\ParentDashboardController::class, 'getAnnouncements']);
 
     // Rutas para el Kiosco / Monitor
     Route::get('/sync/monitor/school', [MonitorSyncController::class, 'getSchoolInfo']);
@@ -82,6 +83,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/reports/unclosed', [AdminController::class, 'getUnclosedAttendance']);
         Route::get('/director/stats', [AdminController::class, 'directorDashboardStats']);
+        Route::get('/director/staff-status', [AdminController::class, 'getStaffStatus']);
         Route::get('/director/messaging/context', [\App\Http\Controllers\Api\Admin\DirectorMessagingController::class, 'getContext']);
         Route::post('/director/messaging/send', [\App\Http\Controllers\Api\Admin\DirectorMessagingController::class, 'sendMessage']);
         Route::get('/director/messaging/history', [\App\Http\Controllers\Api\Admin\DirectorMessagingController::class, 'getSentMessages']);
@@ -90,7 +92,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/teacher/dashboard', [TeacherDashboardController::class, 'getDashboardInfo']);
         Route::get('/teacher/attendance/{classroomId}/pending', [\App\Http\Controllers\Api\Admin\TeacherAttendanceController::class, 'getPending']);
         Route::post('/teacher/attendance/{classroomId}/mark', [\App\Http\Controllers\Api\Admin\TeacherAttendanceController::class, 'markAttendance']);
-        Route::post('/teacher/attendance/{classroomId}/finalize', [\App\Http\Controllers\Api\Admin\TeacherAttendanceController::class, 'finalizeAttendance']);
 
         // Teacher Messaging
         Route::get('/teacher/messaging/context', [\App\Http\Controllers\Api\Teacher\MessagingController::class, 'getTeacherContext']);
