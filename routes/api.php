@@ -83,6 +83,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/reports/unclosed', [AdminController::class, 'getUnclosedAttendance']);
         Route::get('/director/stats', [AdminController::class, 'directorDashboardStats']);
+        Route::get('/director/reports', [AdminController::class, 'getReportsData']);
         Route::get('/director/staff-status', [AdminController::class, 'getStaffStatus']);
         Route::get('/director/messaging/context', [\App\Http\Controllers\Api\Admin\DirectorMessagingController::class, 'getContext']);
         Route::post('/director/messaging/send', [\App\Http\Controllers\Api\Admin\DirectorMessagingController::class, 'sendMessage']);

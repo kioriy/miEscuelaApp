@@ -192,7 +192,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { IonPage, IonContent, IonIcon, alertController } from '@ionic/vue';
+import { IonPage, IonContent, IonIcon, alertController, toastController } from '@ionic/vue';
 import {
   homeOutline, chevronForward, createOutline, arrowBackOutline,
   personOutline, mailOutline, shieldCheckmarkOutline, businessOutline,
@@ -209,7 +209,10 @@ const user = ref<any>(null);
 
 const avatarUrl = computed(() => {
   if (user.value?.avatar_url) return user.value.avatar_url;
-  if (user.value?.profile_photo_path) return `http://127.0.0.1:8000/storage/${user.value.profile_photo_path}`;
+  if (user.value?.profile_photo_path) {
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    return `${baseUrl}/storage/${user.value.profile_photo_path}`;
+  }
   return null;
 });
 
@@ -217,7 +220,8 @@ const roleLabels: Record<string, string> = {
   super_admin: 'Súper Admin',
   director: 'Director',
   teacher: 'Maestro',
-  parent: 'Padre / Tutor'
+  parent: 'Padre / Tutor',
+  admin: 'Admin'
 };
 
 const roleLabel = computed(() => roleLabels[user.value?.role] || user.value?.role || '—');
@@ -261,10 +265,22 @@ const resendWelcomeEmail = async () => {
   try {
     const res = await api.post(`/admin/users/${route.params.id}/resend-welcome`);
     if (res.data.success) {
-      alert('Correo reenviado exitosamente.');
+      const toast = await toastController.create({
+        message: 'Correo de bienvenida reenviado exitosamente.',
+        duration: 3000,
+        color: 'success',
+        position: 'top'
+      });
+      await toast.present();
     }
   } catch (error: any) {
-    alert(error.response?.data?.message || 'Error al reenviar el correo.');
+    const toast = await toastController.create({
+      message: error.response?.data?.message || 'Error al reenviar el correo.',
+      duration: 3000,
+      color: 'danger',
+      position: 'top'
+    });
+    await toast.present();
   } finally {
     isResending.value = false;
   }

@@ -123,13 +123,13 @@
       </div>
 
       <!-- Table Scroll -->
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse whitespace-nowrap">
+      <div class="overflow-x-auto overflow-y-hidden">
+        <table class="w-full text-left border-collapse">
           <thead>
-            <tr class="bg-gray-50/50 text-[10px] font-black tracking-widest text-gray-500 uppercase border-b border-gray-100">
+            <tr class="bg-gray-50/50 text-[10px] font-black tracking-widest text-gray-500 uppercase border-b border-gray-100 whitespace-nowrap">
               <th class="p-4 pl-6">Nombre</th>
               <th class="p-4">Email</th>
-              <th class="p-4">Escuela Asignada</th>
+              <th class="p-4 min-w-[200px]">Escuela Asignada</th>
               <th class="p-4">Rol</th>
               <th class="p-4">Estatus</th>
               <th class="p-4 pr-6 text-right">Acciones</th>
@@ -143,7 +143,7 @@
               <td colspan="6" class="p-8 text-center text-gray-400 font-medium">No hay usuarios registrados.</td>
             </tr>
             <tr v-else v-for="user in users" :key="user.id" class="border-b border-gray-50 hover:bg-gray-50/80 transition-colors">
-              <td class="p-4 pl-6">
+              <td class="p-4 pl-6 whitespace-nowrap">
                 <div class="flex items-center gap-3">
                   <div class="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center text-brand-blue font-black border border-orange-200 shadow-sm overflow-hidden shrink-0">
                     <img v-if="getUserPhoto(user)" :src="getUserPhoto(user)" class="w-full h-full object-cover" />
@@ -154,23 +154,23 @@
                   </div>
                 </div>
               </td>
-              <td class="p-4 text-brand-blue font-medium text-[13px]">
+              <td class="p-4 text-brand-blue font-medium text-[13px] whitespace-nowrap">
                 {{ user.email }}
               </td>
-              <td class="p-4 font-bold text-gray-900 text-[13px]">
-                {{ user.school ? user.school.name : 'Agencia Central' }}
+              <td class="p-4 font-bold text-gray-900 text-[13px] whitespace-normal min-w-[200px] max-w-[300px] leading-snug">
+                {{ getAssignedSchools(user) }}
               </td>
-              <td class="p-4">
+              <td class="p-4 whitespace-nowrap">
                 <span v-if="user.role === 'super_admin'" class="bg-gray-100 border border-gray-200 text-gray-600 text-[11px] px-2.5 py-1 rounded-full font-bold">Súper Admin</span>
                 <span v-else-if="user.role === 'director'" class="bg-indigo-50 border border-indigo-100 text-indigo-600 text-[11px] px-2.5 py-1 rounded-full font-bold">Director</span>
                 <span v-else-if="user.role === 'teacher'" class="bg-brand-blue/10 border border-brand-blue/20 text-brand-blue text-[11px] px-2.5 py-1 rounded-full font-bold">Maestro</span>
                 <span v-else-if="user.role === 'parent'" class="bg-emerald-50 border border-emerald-100 text-emerald-600 text-[11px] px-2.5 py-1 rounded-full font-bold">Padre / Tutor</span>
                 <span v-else class="bg-brand-blue/10 border border-brand-blue/20 text-brand-blue text-[11px] px-2.5 py-1 rounded-full font-bold">{{ user.role }}</span>
               </td>
-              <td class="p-4">
+              <td class="p-4 whitespace-nowrap">
                 <span class="bg-green-100/50 border border-green-200 text-green-700 text-[11px] px-2.5 py-1 rounded-full font-bold">Activo</span>
               </td>
-              <td class="p-4 pr-6">
+              <td class="p-4 pr-6 whitespace-nowrap">
                 <div class="flex items-center justify-end gap-2 text-gray-400">
                   <button @click="$router.push(`/admin/users/${user.id}`)" class="hover:text-brand-blue flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-blue-50 transition-colors text-[12px] font-semibold">
                     <ion-icon :icon="eyeOutline" class="text-sm"></ion-icon>
@@ -241,9 +241,22 @@ const getUserPhoto = (user: any) => {
   if (user.profile_photo_path) {
     return user.profile_photo_path.startsWith('http') 
       ? user.profile_photo_path 
-      : `http://localhost:8000/storage/${user.profile_photo_path}`;
+      : `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/storage/${user.profile_photo_path}`;
   }
   return null;
+};
+
+const getAssignedSchools = (user: any) => {
+  const schoolNames: string[] = [];
+  if (user.school) schoolNames.push(user.school.name);
+  if (user.schools && user.schools.length > 0) {
+    user.schools.forEach((s: any) => {
+      if (!schoolNames.includes(s.name)) {
+        schoolNames.push(s.name);
+      }
+    });
+  }
+  return schoolNames.length > 0 ? schoolNames.join(', ') : 'Agencia Central';
 };
 
 const fetchDashboardStats = async () => {

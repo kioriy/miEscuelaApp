@@ -155,7 +155,7 @@
                   <th class="py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-widest bg-gray-50/50">Estudiante</th>
                   <th class="py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-widest bg-gray-50/50">Estado</th>
                   <th class="py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-widest bg-gray-50/50">Hora de Entrada</th>
-                  <th class="py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-widest bg-gray-50/50 text-right">Acciones</th>
+
                 </tr>
               </thead>
               <tbody>
@@ -194,15 +194,7 @@
                     <span class="text-sm font-medium text-gray-600" v-if="student.time">{{ student.time }}</span>
                     <span class="text-sm font-medium text-gray-400" v-else>-</span>
                   </td>
-                  <td class="py-4 px-6 text-right">
-                    <button v-if="student.status === 'absent'" class="text-brand-blue font-bold text-sm hover:underline flex items-center justify-end gap-1 ml-auto">
-                       <ion-icon :icon="chatbubbleEllipsesOutline"></ion-icon>
-                       Contactar
-                    </button>
-                    <button v-else class="text-gray-400 hover:text-gray-600 transition-colors">
-                       <ion-icon :icon="createOutline" class="text-lg"></ion-icon>
-                    </button>
-                  </td>
+
                 </tr>
               </tbody>
             </table>

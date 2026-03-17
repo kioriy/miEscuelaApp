@@ -191,6 +191,11 @@ const routes: Array<RouteRecordRaw> = [
         path: 'staff-status',
         name: 'StaffStatus',
         component: () => import('../views/admin/StaffStatusView.vue')
+      },
+      {
+        path: 'reports',
+        name: 'AdminReports',
+        component: () => import('../views/admin/ReportsView.vue')
       }
     ]
   }

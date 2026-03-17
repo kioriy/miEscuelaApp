@@ -86,15 +86,11 @@
               Estudiantes
             </router-link>
 
-            <a v-if="currentProfile !== 'teacher'" href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold text-gray-500 hover:bg-gray-50 hover:text-gray-900">
+            <router-link v-if="isDirector" to="/admin/reports" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/reports') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
               <ion-icon :icon="barChart" class="text-xl"></ion-icon>
               Reportes
-            </a>
+            </router-link>
 
-            <a v-if="currentProfile !== 'teacher'" href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold text-gray-500 hover:bg-gray-50 hover:text-gray-900">
-              <ion-icon :icon="settings" class="text-xl"></ion-icon>
-              Configuración
-            </a>
 
             <router-link v-if="isAdmin || isDirector" to="/admin/sync-kiosk" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/sync-kiosk') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
               <ion-icon :icon="time" class="text-xl"></ion-icon>
