@@ -199,9 +199,7 @@
                 <ion-icon :icon="trashOutline" class="text-lg"></ion-icon>
                 Desvincular Dispositivo
               </button>
-              <button class="flex-1 bg-white border border-gray-200 text-gray-700 font-bold py-3 px-4 rounded-xl text-sm shadow-sm hover:bg-gray-50 transition-all text-center">
-                Descargar Reporte
-              </button>
+
               <button @click="saveKioskChanges" :disabled="isSaving" class="flex-1 bg-brand-blue text-white font-bold py-3 px-4 rounded-xl text-sm shadow-md shadow-blue-500/20 hover:bg-blue-600 transition-all text-center disabled:opacity-50 disabled:cursor-not-allowed">
                 {{ isSaving ? 'Guardando...' : 'Guardar Cambios' }}
               </button>

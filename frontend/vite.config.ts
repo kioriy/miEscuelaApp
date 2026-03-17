@@ -22,18 +22,18 @@ export default defineConfig({
         name: 'miEscuelaApp',
         short_name: 'miEscuela',
         description: 'Sistema de control y acceso escolar offline-first',
-        theme_color: '#ffffff',
+        theme_color: '#3b82f6',
         background_color: '#ffffff',
         display: 'standalone',
         orientation: 'portrait',
         icons: [
           {
-            src: '/favicon.png', // Fallback
+            src: '/favicon.png',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: '/favicon.png', // Fallback
+            src: '/favicon.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'

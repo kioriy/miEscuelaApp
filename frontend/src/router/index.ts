@@ -30,6 +30,11 @@ const routes: Array<RouteRecordRaw> = [
     component: LoginView
   },
   {
+    path: '/privacy',
+    name: 'Privacy',
+    component: () => import('../views/PrivacyView.vue')
+  },
+  {
     path: '/monitor',
     name: 'Monitor',
     component: MonitorView

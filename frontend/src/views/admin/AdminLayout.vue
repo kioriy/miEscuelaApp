@@ -5,9 +5,7 @@
       <!-- Mobile Header & Hamburger -->
       <div class="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-100 flex items-center justify-between px-4 z-40 shadow-sm">
         <div class="flex items-center gap-2">
-           <div class="w-8 h-8 bg-brand-blue rounded-lg flex items-center justify-center text-white shadow-md shadow-blue-500/20">
-              <ion-icon :icon="school" class="text-sm"></ion-icon>
-           </div>
+            <img src="@/assets/images/logo.png" alt="miEscuelaApp" class="w-8 h-8 object-contain" />
             <h2 class="text-lg font-black text-gray-900 tracking-tight leading-none italic uppercase">miEscuelaApp</h2>
         </div>
         <button @click="toggleMobileMenu" class="p-2 -mr-2 text-gray-600 hover:text-brand-blue transition-colors focus:outline-none">
@@ -33,9 +31,7 @@
           <!-- Logo Header (Sidebar) -->
           <div class="px-6 py-8 flex items-center justify-between gap-3 border-b border-gray-50 mb-4">
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 bg-brand-blue rounded-xl flex items-center justify-center text-white shadow-md shadow-blue-500/20">
-                <ion-icon :icon="school" class="text-xl"></ion-icon>
-              </div>
+              <img src="@/assets/images/logo.png" alt="miEscuelaApp" class="w-10 h-10 object-contain" />
               <div>
                 <h2 class="text-xl font-black text-gray-900 tracking-tight leading-none italic uppercase">miEscuelaApp</h2>
                 <span class="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Sistema Escolar</span>
@@ -76,7 +72,7 @@
               Kioscos
             </router-link>
 
-            <router-link v-if="currentProfile === 'super_admin' || currentProfile === 'director'" to="/admin/teachers" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/teachers') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
+            <router-link v-if="isDirector" to="/admin/teachers" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/teachers') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
               <ion-icon :icon="people" class="text-xl"></ion-icon>
               Profesores
             </router-link>
@@ -113,9 +109,7 @@
         <!-- Teacher Portal Specific Header (Visible only for teachers on Desktop) -->
         <div v-if="currentProfile === 'teacher'" class="hidden lg:flex items-center justify-between px-10 py-4 bg-white border-b border-gray-100 shrink-0">
           <div class="flex items-center gap-4">
-            <div class="w-12 h-12 bg-[#EBF4FF] rounded-2xl flex items-center justify-center text-brand-blue shadow-[0_4px_12px_rgba(59,130,246,0.15)]">
-              <ion-icon :icon="school" class="text-2xl"></ion-icon>
-            </div>
+            <img src="@/assets/images/logo.png" alt="miEscuelaApp" class="w-12 h-12 object-contain" />
             <div>
               <h1 class="text-[22px] font-black text-gray-900 tracking-tight leading-none mb-1">Portal Docente</h1>
               <p class="text-[13px] text-gray-500 font-semibold tracking-wide">miEscuelaApp</p>

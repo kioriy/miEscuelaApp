@@ -7,7 +7,7 @@ export const storageReady = new Promise((resolve) => {
 
 // Initialize the storage
 export const storage = new Storage({
-    name: 'educontrol_db',
+    name: 'miEscuelaAppDB',
     driverOrder: [Drivers.IndexedDB, Drivers.LocalStorage]
 });
 

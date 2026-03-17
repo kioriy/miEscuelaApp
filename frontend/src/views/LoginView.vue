@@ -15,7 +15,7 @@
             <div class="absolute inset-0 bg-gradient-to-t from-brand-blue/90 via-brand-blue/60 to-transparent"></div>
           </div>
           
-          <div class="relative z-10 flex flex-col justify-center px-12 lg:px-24 text-white h-full pb-20">
+          <div class="relative z-10 flex flex-col items-center justify-center px-12 lg:px-24 text-white h-full text-center">
             <div class="bg-white/20 backdrop-blur-sm p-4 w-16 h-16 rounded-2xl flex items-center justify-center mb-8 shadow-lg border border-white/30">
               <ion-icon :icon="shieldCheckmarkOutline" class="text-3xl text-white"></ion-icon>
             </div>
@@ -23,12 +23,12 @@
             <h1 class="text-4xl lg:text-5xl font-black leading-tight mb-6 drop-shadow-md tracking-tight">
               Seguridad y Control en Tiempo Real para tu Comunidad Escolar
             </h1>
-            <p class="text-xl text-white/90 font-light leading-relaxed max-w-lg mb-auto">
+            <p class="text-xl text-white/90 font-light leading-relaxed max-w-lg mb-8">
               Gestiona ingresos, salidas y asistencia con la tecnología más avanzada del sector educativo.
             </p>
             
             <!-- Bottom decorative line -->
-            <div class="flex items-center space-x-4 mt-12 mb-8">
+            <div class="flex items-center space-x-4">
               <div class="h-1 w-16 bg-white rounded-full"></div>
               <span class="text-sm tracking-[0.2em] font-semibold text-white/80 uppercase">Sistema de Gestión Escolar</span>
             </div>
@@ -40,10 +40,8 @@
           
           <!-- Logo Header -->
           <div class="flex items-center mb-16 gap-3">
-             <div class="bg-brand-blue p-2 rounded-xl text-white flex items-center justify-center shadow-md">
-                <ion-icon :icon="school" class="text-2xl"></ion-icon>
-             </div>
-             <span class="text-2xl font-bold text-gray-900 tracking-tight">miEscuela</span>
+             <img src="@/assets/images/logo.png" alt="miEscuela" class="w-12 h-12 object-contain" />
+             <span class="text-2xl font-bold text-gray-900 tracking-tight">miEscuelaApp</span>
           </div>
 
           <!-- Welcome Title -->
@@ -75,32 +73,10 @@
             </div>
           </div>
 
-          <!-- Divider -->
-          <div class="mt-8 mb-8 flex items-center justify-center">
-            <div class="flex-grow border-t border-gray-100"></div>
-            <span class="flex-shrink-0 mx-4 text-xs font-semibold text-gray-400 uppercase tracking-widest">Soporte Técnico</span>
-            <div class="flex-grow border-t border-gray-100"></div>
-          </div>
-
-          <!-- Help Info Card -->
-          <div class="bg-blue-50/50 rounded-2xl p-4 flex items-start gap-4 border border-blue-100/50">
-            <div class="bg-brand-blue text-white rounded-full p-1.5 flex-shrink-0 mt-0.5">
-              <ion-icon :icon="helpCircle" class="text-xl"></ion-icon>
-            </div>
-            <div>
-              <h4 class="text-sm font-bold text-brand-blue">¿Problemas para acceder?</h4>
-              <p class="text-xs text-brand-blue/80 mt-1 cursor-pointer hover:underline">
-                Contactar al administrador de IT
-              </p>
-            </div>
-          </div>
-          
-          <!-- Footer info -->
-          <div class="absolute bottom-8 left-8 right-8 sm:left-16 sm:right-16 lg:left-32 lg:right-32 flex justify-between items-center text-[11px] text-gray-400 font-medium">
-             <span>© 2026 EduControl v4.2.0</span>
+          <div class="mt-12 flex justify-between items-center text-[11px] text-gray-400 font-medium">
+             <span>© 2026 miEscuelaApp v1.0.0</span>
              <div class="space-x-4">
-                <a href="#" class="hover:text-gray-600 transition-colors">Términos de Servicio</a>
-                <a href="#" class="hover:text-gray-600 transition-colors">Privacidad</a>
+                <router-link to="/privacy" class="hover:text-gray-600 transition-colors">Privacidad</router-link>
              </div>
           </div>
 

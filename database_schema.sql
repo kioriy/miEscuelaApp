@@ -1,5 +1,5 @@
 -- =========================================================================
--- SCRIPT DE BASE DE DATOS: EDUCONTROL PWA (MULTI-TENANT / OFFLINE-FIRST)
+-- SCRIPT DE BASE DE DATOS: MIESCUELAAPP PWA (MULTI-TENANT / OFFLINE-FIRST)
 -- Motor recomendado: InnoDB
 -- =========================================================================
 

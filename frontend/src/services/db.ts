@@ -49,7 +49,7 @@ export class AppDatabase extends Dexie {
     teacherAttendanceLogs!: Table<LocalTeacherAttendanceLog>;
 
     constructor() {
-        super('EduControlDB');
+        super('miEscuelaAppDB');
         this.version(2).stores({
             students: 'id, enrollment_code, [grade+group_letter]',
             teachers: 'id, enrollment_code',
