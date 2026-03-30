@@ -122,7 +122,7 @@ const loadData = async () => {
     } else if (user.profile_photo_path) {
       userAvatar.value = user.profile_photo_path.startsWith('http') 
         ? user.profile_photo_path 
-        : `http://localhost:8000/storage/${user.profile_photo_path}`;
+        : `${import.meta.env.VITE_API_URL?.replace('/api', '') || ''}/storage/${user.profile_photo_path}`;
     }
   }
 };

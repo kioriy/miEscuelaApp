@@ -12,7 +12,7 @@
           <div>
             <h1 class="text-4xl font-black text-gray-900 tracking-tight leading-none mb-3">Reportes de Asistencia</h1>
             <p class="text-gray-500 font-bold tracking-wide flex items-center gap-2">
-              Estadísticas generales de tu escuela
+              {{ currentProfile === 'teacher' ? 'Estadísticas de tus grupos asignados' : 'Estadísticas generales de tu escuela' }}
             </p>
             <p v-if="activeSchoolName" class="text-[15px] font-black text-brand-blue flex items-center gap-1.5 mt-2">
               <ion-icon :icon="businessOutline"></ion-icon> {{ activeSchoolName }}
@@ -22,12 +22,47 @@
             <!-- Date Range Selector -->
             <div class="relative">
               <select v-model="dateRange" class="appearance-none bg-white border border-gray-200 text-gray-700 text-[13px] font-black rounded-xl py-3 pl-10 pr-10 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-brand-blue cursor-pointer shadow-sm">
+                <option value="day">Hoy</option>
+                <option value="custom">Fecha Específica</option>
                 <option value="week">Esta Semana</option>
                 <option value="month">Este Mes</option>
                 <option value="quarter">Este Trimestre</option>
               </select>
               <ion-icon :icon="calendarOutline" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg pointer-events-none"></ion-icon>
               <ion-icon :icon="chevronDownOutline" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></ion-icon>
+            </div>
+            <div v-if="dateRange === 'custom'">
+              <button 
+                @click="showDatePicker = true"
+                class="bg-white border border-gray-200 text-gray-700 text-[13px] font-black rounded-xl py-3 px-4 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-brand-blue cursor-pointer shadow-sm flex items-center gap-2 hover:bg-gray-50 transition-all"
+              >
+                <ion-icon :icon="calendarOutline" class="text-brand-blue text-lg"></ion-icon>
+                {{ customDate ? formatDisplayDate(customDate) : 'Selecciona fecha' }}
+              </button>
+              <ion-modal :is-open="showDatePicker" @didDismiss="showDatePicker = false" class="date-picker-modal">
+                <div class="flex flex-col items-center justify-center h-full bg-black/50 p-4">
+                  <div class="bg-white rounded-3xl shadow-2xl overflow-hidden w-full max-w-[360px]">
+                    <div class="bg-brand-blue px-6 py-4">
+                      <h3 class="text-white font-black text-lg">Seleccionar Fecha</h3>
+                      <p class="text-blue-100 text-[12px] font-semibold">Elige un día para ver estadísticas</p>
+                    </div>
+                    <ion-datetime
+                      ref="datetimeRef"
+                      presentation="date"
+                      :value="customDate || todayStr"
+                      :min="minDateStr"
+                      :max="todayStr"
+                      locale="es-ES"
+                      :first-day-of-week="1"
+                      @ionChange="onDateSelected"
+                    ></ion-datetime>
+                    <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
+                      <button @click="showDatePicker = false" class="px-5 py-2.5 text-gray-500 font-black text-[13px] rounded-xl hover:bg-gray-100 transition-all">Cancelar</button>
+                      <button @click="confirmDate" class="px-5 py-2.5 bg-brand-blue text-white font-black text-[13px] rounded-xl shadow-md hover:bg-blue-600 transition-all">Aceptar</button>
+                    </div>
+                  </div>
+                </div>
+              </ion-modal>
             </div>
             <button class="bg-brand-blue text-white font-black px-6 py-3 rounded-xl shadow-lg shadow-blue-500/20 hover:bg-blue-600 transition-all flex items-center gap-2">
               <ion-icon :icon="downloadOutline" class="text-xl"></ion-icon>
@@ -383,7 +418,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
-import { IonPage, IonContent, IonIcon, IonRefresher, IonRefresherContent } from '@ionic/vue';
+import { IonPage, IonContent, IonIcon, IonRefresher, IonRefresherContent, IonDatetime, IonModal } from '@ionic/vue';
 import {
   businessOutline, calendarOutline, chevronDownOutline, downloadOutline,
   peopleOutline, checkmarkCircleOutline, trendingUpOutline, banOutline,
@@ -393,9 +428,40 @@ import { storage } from '@/services/storage';
 import api from '@/services/api';
 
 const activeSchoolName = ref('');
-const dateRange = ref('week');
+const dateRange = ref('day');
+const customDate = ref('');
+const pendingDate = ref('');
+const showDatePicker = ref(false);
 const activeTab = ref('grade');
 const loading = ref(true);
+const currentProfile = ref('');
+const minDateStr = ref('2020-01-01');
+const datetimeRef = ref<any>(null);
+
+// Today's date string for max attribute (no future dates)
+const todayStr = new Date().toISOString().split('T')[0];
+
+const formatDisplayDate = (dateStr: string) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T12:00:00');
+  const options: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' };
+  const result = d.toLocaleDateString('es-MX', options);
+  return result.charAt(0).toUpperCase() + result.slice(1);
+};
+
+const onDateSelected = (ev: any) => {
+  const val = ev.detail.value;
+  if (val) {
+    pendingDate.value = val.split('T')[0];
+  }
+};
+
+const confirmDate = () => {
+  if (pendingDate.value) {
+    customDate.value = pendingDate.value;
+  }
+  showDatePicker.value = false;
+};
 
 const tabs = [
   { key: 'grade', label: 'Por Grado', icon: schoolOutline },
@@ -425,15 +491,21 @@ const studentStats = ref<any[]>([]);
 const fetchReportsData = async () => {
   loading.value = true;
   try {
-    const res = await api.get('/admin/director/reports', {
-      params: { range: dateRange.value }
-    });
+    const endpoint = currentProfile.value === 'teacher' ? '/admin/teacher/reports' : '/admin/director/reports';
+    const params: any = { range: dateRange.value };
+    if (dateRange.value === 'custom' && customDate.value) {
+      params.date = customDate.value;
+    }
+    const res = await api.get(endpoint, { params });
     if (res.data.success) {
       const d = res.data.data;
       summaryStats.value = d.summary;
       gradeStats.value = d.gradeStats;
       groupStats.value = d.groupStats;
       studentStats.value = d.studentStats;
+      if (d.minDate) {
+        minDateStr.value = d.minDate;
+      }
     }
   } catch (error) {
     console.error('Error fetching reports data:', error);
@@ -475,11 +547,20 @@ const handleRefresh = async (event: any) => {
 };
 
 // Re-fetch when date range changes
-watch(dateRange, () => {
+watch(dateRange, (newVal) => {
+  if (newVal === 'custom' && !customDate.value) return; // wait for date to be picked
   fetchReportsData();
 });
 
+watch(customDate, () => {
+  if (dateRange.value === 'custom' && customDate.value) {
+    fetchReportsData();
+  }
+});
+
 onMounted(async () => {
+  const profile = await storage.get('current_profile');
+  if (profile) currentProfile.value = profile;
   const currentId = await storage.get('current_school_id');
   const schools = await storage.get('user_schools');
   if (currentId && schools) {
@@ -502,5 +583,22 @@ onMounted(async () => {
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+</style>
+
+<style>
+ion-modal.date-picker-modal {
+  --background: transparent;
+  --box-shadow: none;
+  --border-radius: 0;
+  --width: 100%;
+  --height: 100%;
+}
+ion-modal.date-picker-modal .modal-wrapper,
+ion-modal.date-picker-modal .ion-page {
+  background: transparent !important;
+}
+ion-modal.date-picker-modal ion-datetime {
+  --background: #fff;
 }
 </style>

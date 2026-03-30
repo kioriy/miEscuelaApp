@@ -219,7 +219,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { IonPage, IonContent, IonRefresher, IonRefresherContent, alertController } from '@ionic/vue';
+import { IonPage, IonContent, IonRefresher, IonRefresherContent, IonIcon, alertController } from '@ionic/vue';
 import { 
   personAddOutline, searchOutline, chevronDown, filter,
   createOutline, trashOutline, imagesOutline, eyeOutline, business, refreshOutline

@@ -109,9 +109,6 @@ class TeacherController extends Controller
                     TeacherGroupAssignment::create([
                         'user_id' => $teacher->id,
                         'classroom_id' => $classroomId,
-                        'school_id' => $classroom->school_id,
-                        'school_level' => $classroom->school_level,
-                        'shift' => $classroom->shift,
                     ]);
                 }
             }
@@ -213,9 +210,6 @@ class TeacherController extends Controller
                     TeacherGroupAssignment::create([
                         'user_id' => $teacher->id,
                         'classroom_id' => $classroomId,
-                        'school_id' => $classroom->school_id,
-                        'school_level' => $classroom->school_level,
-                        'shift' => $classroom->shift,
                     ]);
                 }
             }

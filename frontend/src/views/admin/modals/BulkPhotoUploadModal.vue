@@ -216,6 +216,7 @@ const startUpload = async () => {
     logs.value.push('Extrayendo archivo ZIP...');
     
     const res = await api.post('/admin/students/photos/bulk', formData, {
+      timeout: 300000, // 5 minutos para archivos grandes
       onUploadProgress: (progressEvent: any) => {
         const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
         progress.value = percentCompleted;

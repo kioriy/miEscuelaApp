@@ -251,7 +251,7 @@
             </p>
 
             <!-- TODO: Add dynamic URL to the frontend app, assuming an env variable or default hardcoded string in the Mailable -->
-            <a href="{{ env('APP_FRONTEND_URL', 'http://localhost:5173') }}/login" class="button">
+            <a href="{{ env('APP_FRONTEND_URL', 'http://app.miescuela.net') }}/login" class="button">
                 Acceder a mi Panel &rarr;
             </a>
 
@@ -291,12 +291,7 @@
             </div>
             <div class="footer-text">
                 Este es un correo automático, por favor no responda a esta dirección.<br />
-                &copy; {{ date('Y') }} Sistema de Control Escolar. Todos los derechos reservados.
-            </div>
-            <div class="footer-links">
-                <a href="#">SOPORTE TÉCNICO</a>
-                <span>&bull;</span>
-                <a href="#">POLÍTICAS DE PRIVACIDAD</a>
+                &copy; {{ date('Y') }} Sistema de Control Escolar miEscuelaApp. Todos los derechos reservados.
             </div>
         </div>
     </div>

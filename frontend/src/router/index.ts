@@ -103,6 +103,11 @@ const routes: Array<RouteRecordRaw> = [
         component: InstitutionalMessagingView
       },
       {
+        path: 'teacher/reports',
+        name: 'TeacherReports',
+        component: () => import('../views/admin/ReportsView.vue')
+      },
+      {
         path: 'schools',
         name: 'AdminSchools',
         component: SchoolsView

@@ -91,6 +91,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Teacher Portal
         Route::get('/teacher/dashboard', [TeacherDashboardController::class, 'getDashboardInfo']);
+        Route::get('/teacher/reports', [\App\Http\Controllers\Api\Admin\TeacherReportsController::class, 'getReportsData']);
         Route::get('/teacher/attendance/{classroomId}/pending', [\App\Http\Controllers\Api\Admin\TeacherAttendanceController::class, 'getPending']);
         Route::post('/teacher/attendance/{classroomId}/mark', [\App\Http\Controllers\Api\Admin\TeacherAttendanceController::class, 'markAttendance']);
 

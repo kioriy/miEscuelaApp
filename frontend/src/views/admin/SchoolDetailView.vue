@@ -260,7 +260,7 @@ const logoUrl = computed(() => {
   if (!school.value?.logo_path) return null;
   return school.value.logo_path.startsWith('http')
     ? school.value.logo_path
-    : `http://localhost:8000/storage/${school.value.logo_path}`;
+    : `${import.meta.env.VITE_API_URL?.replace('/api', '') || ''}/storage/${school.value.logo_path}`;
 });
 
 const scanTypeLabel = computed(() => {

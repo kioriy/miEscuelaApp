@@ -47,7 +47,7 @@
                   <button @click="triggerPhotoUpload" class="absolute -bottom-2 -right-2 w-12 h-12 bg-white rounded-2xl shadow-lg border border-gray-100 flex items-center justify-center text-brand-blue hover:bg-brand-blue hover:text-white transition-all">
                     <ion-icon :icon="cameraOutline" class="text-xl"></ion-icon>
                   </button>
-                  <input id="photoInput" type="file" ref="photoInput" class="hidden" accept="image/*" @change="handlePhotoChange">
+                  <input type="file" ref="photoInput" class="hidden" accept="image/*" @change="handlePhotoChange">
                 </div>
                 
                 <p class="text-[11px] text-gray-400 font-medium px-4 leading-relaxed">Las fotos deben estar centradas y con fondo claro para un mejor reconocimiento.</p>
@@ -212,6 +212,7 @@ const isEdit = computed(() => !!route.params.id);
 const submitting = ref(false);
 const photoPreview = ref<string | null>(null);
 const photoFile = ref<File | null>(null);
+const photoInput = ref<HTMLInputElement | null>(null);
 const isAdmin = ref(false);
 const userSchools = ref<any[]>([]);
 
@@ -243,10 +244,7 @@ const removePhoto = () => {
 };
 
 const triggerPhotoUpload = () => {
-  const photoInputEl = document.getElementById('photoInput');
-  if (photoInputEl) {
-    (photoInputEl as HTMLInputElement).click();
-  }
+  photoInput.value?.click();
 };
 
 const fetchStudent = async () => {

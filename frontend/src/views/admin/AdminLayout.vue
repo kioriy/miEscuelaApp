@@ -3,7 +3,7 @@
     <div class="flex h-screen bg-gray-50 font-sans text-gray-900 overflow-hidden w-full relative">
       
       <!-- Mobile Header & Hamburger -->
-      <div class="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-100 flex items-center justify-between px-4 z-40 shadow-sm">
+      <div class="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-100 flex items-center justify-between px-4 z-40 shadow-sm" style="padding-top: env(safe-area-inset-top, 0px); height: calc(4rem + env(safe-area-inset-top, 0px));">
         <div class="flex items-center gap-2">
             <img src="@/assets/images/logo.png" alt="miEscuelaApp" class="w-8 h-8 object-contain" />
             <h2 class="text-lg font-black text-gray-900 tracking-tight leading-none italic uppercase">miEscuelaApp</h2>
@@ -86,6 +86,10 @@
               <ion-icon :icon="barChart" class="text-xl"></ion-icon>
               Reportes
             </router-link>
+            <router-link v-else-if="isTeacher" to="/admin/teacher/reports" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/reports') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
+              <ion-icon :icon="barChart" class="text-xl"></ion-icon>
+              Reportes
+            </router-link>
 
 
             <router-link v-if="isAdmin || isDirector" to="/admin/sync-kiosk" @click="closeMobileMenu" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold" active-class="bg-blue-50 text-brand-blue shadow-sm" :class="$route.path.includes('/sync-kiosk') ? 'bg-blue-50 text-brand-blue shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'">
@@ -96,7 +100,7 @@
           </nav>
 
           <!-- User Profile & Logout -->
-          <div class="px-4 py-6 border-t border-gray-100 mt-auto bg-white">
+          <div class="px-4 py-6 border-t border-gray-100 mt-auto bg-white" style="padding-bottom: env(safe-area-inset-bottom, 0px);">
             <ProfileSwitcher variant="sidebar" />
           </div>
         </div>
@@ -104,7 +108,7 @@
 
       <!-- Main Content Area -->
       <!-- Add pt-16 on mobile to account for fixed header, enable overflow-y-auto -->
-      <main class="flex-1 overflow-y-auto w-full h-full relative pt-16 lg:pt-0 bg-gray-50 flex flex-col">
+      <main class="flex-1 overflow-y-auto w-full h-full relative lg:pt-0 bg-gray-50 flex flex-col" style="padding-top: calc(4rem + env(safe-area-inset-top, 0px));">
         
         <!-- Teacher Portal Specific Header (Visible only for teachers on Desktop) -->
         <div v-if="currentProfile === 'teacher'" class="hidden lg:flex items-center justify-between px-10 py-4 bg-white border-b border-gray-100 shrink-0">

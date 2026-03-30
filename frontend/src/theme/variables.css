@@ -13,10 +13,39 @@
 
   --ion-font-family: 'Inter', sans-serif;
   --ion-background-color: #f9fafb;
+
+  /* Safe area insets como variables CSS reutilizables */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
 }
 
 @media (prefers-color-scheme: dark) {
   /*
    * Dark Colors (We will keep light mode enforced for now in PWA)
    */
+}
+
+/* === PWA Safe Area Support === */
+/* No aplicar padding global al body - cada componente fijo/sticky
+   maneja su propio safe-area para evitar doble compensación */
+
+/* Ajustar ion-content para que su scroll respete las áreas seguras */
+ion-content {
+  --padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Clases utilitarias para safe areas */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-area-x {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }

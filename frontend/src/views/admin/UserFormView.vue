@@ -180,9 +180,8 @@
         <div class="flex items-center justify-center gap-6 text-[13px] font-bold text-blue-500 mb-6">
           <a href="#" class="hover:text-blue-700 transition-colors">Términos de Servicio</a>
           <a href="#" class="hover:text-blue-700 transition-colors">Política de Privacidad</a>
-          <a href="#" class="hover:text-blue-700 transition-colors">Soporte Técnico</a>
         </div>
-        <p class="text-xs font-semibold text-gray-500">© 2024 Sistema de Control Escolar Integral. Todos los derechos reservados.</p>
+        <p class="text-xs font-semibold text-gray-500">© 2026 miEscuelaApp Sistema de Control Escolar Integral. Todos los derechos reservados.</p>
       </footer>
 
     </main>

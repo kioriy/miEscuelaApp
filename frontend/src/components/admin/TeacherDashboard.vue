@@ -207,9 +207,44 @@
         </div>
       </div>
 
-      <!-- Right Column: Quick Message & Activity -->
+      <!-- Right Column: Activity & Messages -->
       <div class="xl:w-1/3 flex flex-col gap-6">
         
+        <!-- Recent Activity -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col h-full">
+           <div class="flex items-center gap-2 mb-6">
+              <div class="w-8 h-8 rounded-lg bg-gray-50 text-gray-500 flex items-center justify-center">
+                 <ion-icon :icon="timeOutline" class="text-lg"></ion-icon>
+              </div>
+              <h3 class="text-lg font-black text-gray-900 tracking-tight">Actividad Reciente</h3>
+           </div>
+
+           <div class="space-y-6 relative before:absolute before:inset-0 before:ml-4 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-100 before:to-transparent">
+              <div v-for="activity in recentActivity" :key="activity.id" class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group select-none">
+                 <div class="flex gap-4 w-full">
+                    <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center z-10 border-2 border-white shadow-sm"
+                         :class="{
+                           'bg-green-100 text-green-600': activity.type === 'attendance',
+                           'bg-blue-100 text-brand-blue': activity.type === 'message',
+                           'bg-amber-100 text-amber-500': activity.type === 'late',
+                           'bg-gray-100 text-gray-500': activity.type === 'system'
+                         }">
+                       <ion-icon :icon="getActivityIcon(activity.type)"></ion-icon>
+                    </div>
+                    <div class="flex-grow pt-1">
+                       <p class="text-sm text-gray-900 font-medium">
+                          <span class="font-black">{{ activity.subject }}</span> {{ activity.action }}
+                       </p>
+                       <p class="text-[11px] font-bold text-gray-400 mt-0.5">{{ activity.time }}</p>
+                       <div v-if="activity.quote" class="mt-2 text-xs font-medium text-gray-600 italic bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                          "{{ activity.quote }}"
+                       </div>
+                    </div>
+                 </div>
+              </div>
+           </div>
+        </div>
+
         <!-- Sent Messages History -->
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col h-full">
            <div class="flex items-center justify-between mb-6">
@@ -246,42 +281,6 @@
                     <button class="text-[10px] font-black text-gray-400 hover:text-brand-blue flex items-center gap-1">
                        Detalle <ion-icon :icon="chevronForwardOutline"></ion-icon>
                     </button>
-                 </div>
-              </div>
-           </div>
-        </div>
-
-        <!-- Recent Activity -->
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col h-full">
-           <div class="flex items-center gap-2 mb-6">
-              <div class="w-8 h-8 rounded-lg bg-gray-50 text-gray-500 flex items-center justify-center">
-                 <ion-icon :icon="timeOutline" class="text-lg"></ion-icon>
-              </div>
-              <h3 class="text-lg font-black text-gray-900 tracking-tight">Actividad Reciente</h3>
-           </div>
-
-           <div class="space-y-6 relative before:absolute before:inset-0 before:ml-4 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-100 before:to-transparent">
-              <div v-for="activity in recentActivity" :key="activity.id" class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group select-none">
-                 <!-- Activity items layout depends on whether it's an alternate timeline or straight vertical. The design shows a simple vertical list. Let's adjust for vertical list. -->
-                 <div class="flex gap-4 w-full">
-                    <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center z-10 border-2 border-white shadow-sm"
-                         :class="{
-                           'bg-green-100 text-green-600': activity.type === 'attendance',
-                           'bg-blue-100 text-brand-blue': activity.type === 'message',
-                           'bg-amber-100 text-amber-500': activity.type === 'late',
-                           'bg-gray-100 text-gray-500': activity.type === 'system'
-                         }">
-                       <ion-icon :icon="getActivityIcon(activity.type)"></ion-icon>
-                    </div>
-                    <div class="flex-grow pt-1">
-                       <p class="text-sm text-gray-900 font-medium">
-                          <span class="font-black">{{ activity.subject }}</span> {{ activity.action }}
-                       </p>
-                       <p class="text-[11px] font-bold text-gray-400 mt-0.5">{{ activity.time }}</p>
-                       <div v-if="activity.quote" class="mt-2 text-xs font-medium text-gray-600 italic bg-gray-50 p-2.5 rounded-lg border border-gray-100">
-                          "{{ activity.quote }}"
-                       </div>
-                    </div>
                  </div>
               </div>
            </div>

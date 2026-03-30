@@ -157,7 +157,7 @@
               <td class="p-4 pl-6">
                 <div class="flex items-center gap-4">
                   <div v-if="school.logo_path" class="w-10 h-10 rounded-full bg-white border border-gray-200 overflow-hidden shrink-0">
-                    <img :src="school.logo_path.startsWith('http') ? school.logo_path : 'http://localhost:8000/storage/' + school.logo_path" class="w-full h-full object-cover" />
+                    <img :src="school.logo_path.startsWith('http') ? school.logo_path : storageBaseUrl + '/' + school.logo_path" class="w-full h-full object-cover" />
                   </div>
                   <div v-else class="w-10 h-10 rounded-full bg-blue-50 text-brand-blue font-black flex items-center justify-center shrink-0 border border-blue-100">
                     {{ school.name ? school.name.substring(0, 2).toUpperCase() : 'SC' }}
@@ -344,6 +344,8 @@ import {
 } from 'ionicons/icons';
 import api from '@/services/api';
 import { storage } from '@/services/storage';
+
+const storageBaseUrl = (import.meta.env.VITE_API_URL?.replace('/api', '') || '') + '/storage';
 
 const loadingSchools = ref(true);
 const loadingStats = ref(true);

@@ -98,25 +98,30 @@
       <div class="p-6 border-b border-gray-100 flex flex-col md:flex-row items-center gap-4">
         <div class="flex-grow w-full relative">
             <ion-icon :icon="searchOutline" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></ion-icon>
-            <input type="text" placeholder="Buscar por nombre o email..." class="pl-10 pr-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue text-[13px] font-medium text-gray-700 w-full transition-colors" />
+            <input type="text" v-model="searchQuery" @input="debouncedSearch" placeholder="Buscar por nombre o email..." class="pl-10 pr-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue text-[13px] font-medium text-gray-700 w-full transition-colors" />
         </div>
         
         <div class="flex items-center gap-3 shrink-0">
           <div class="relative">
-             <select class="appearance-none bg-gray-50/50 border border-gray-200 text-gray-700 text-[13px] font-bold rounded-xl py-2.5 pl-4 pr-10 focus:outline-none focus:ring-1 focus:ring-brand-blue focus:border-brand-blue cursor-pointer">
-                <option>Todos los Roles</option>
+             <select v-model="filterRole" @change="fetchUsers(true)" class="appearance-none bg-gray-50/50 border border-gray-200 text-gray-700 text-[13px] font-bold rounded-xl py-2.5 pl-4 pr-10 focus:outline-none focus:ring-1 focus:ring-brand-blue focus:border-brand-blue cursor-pointer">
+                <option value="">Todos los Roles</option>
+                <option value="super_admin">Súper Admin</option>
+                <option value="director">Director</option>
+                <option value="teacher">Maestro</option>
+                <option value="parent">Padre / Tutor</option>
              </select>
              <ion-icon :icon="chevronDown" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></ion-icon>
           </div>
           
           <div class="relative">
-             <select class="appearance-none bg-gray-50/50 border border-gray-200 text-gray-700 text-[13px] font-bold rounded-xl py-2.5 pl-4 pr-10 focus:outline-none focus:ring-1 focus:ring-brand-blue focus:border-brand-blue cursor-pointer">
-                <option>Todas las Escuelas</option>
+             <select v-model="filterSchoolId" @change="fetchUsers(true)" class="appearance-none bg-gray-50/50 border border-gray-200 text-gray-700 text-[13px] font-bold rounded-xl py-2.5 pl-4 pr-10 focus:outline-none focus:ring-1 focus:ring-brand-blue focus:border-brand-blue cursor-pointer">
+                <option value="">Todas las Escuelas</option>
+                <option v-for="s in schoolsList" :key="s.id" :value="s.id">{{ s.name }}</option>
              </select>
              <ion-icon :icon="chevronDown" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></ion-icon>
           </div>
 
-          <button class="w-10 h-10 flex items-center justify-center border border-gray-200 bg-white rounded-xl text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-colors">
+          <button @click="clearFilters" title="Limpiar filtros" class="w-10 h-10 flex items-center justify-center border border-gray-200 bg-white rounded-xl text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-colors" :class="hasActiveFilters ? 'border-brand-blue text-brand-blue bg-blue-50' : ''">
             <ion-icon :icon="filter" class="text-base"></ion-icon>
           </button>
         </div>
@@ -221,6 +226,31 @@ const loadingStats = ref(true);
 const loadingUsers = ref(true);
 const activeSchoolName = ref('');
 
+// Filtros reactivos
+const searchQuery = ref('');
+const filterRole = ref('');
+const filterSchoolId = ref('');
+const schoolsList = ref<any[]>([]);
+
+let searchTimeout: any = null;
+const debouncedSearch = () => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    fetchUsers(true);
+  }, 300);
+};
+
+const hasActiveFilters = computed(() => {
+  return searchQuery.value !== '' || filterRole.value !== '' || filterSchoolId.value !== '';
+});
+
+const clearFilters = () => {
+  searchQuery.value = '';
+  filterRole.value = '';
+  filterSchoolId.value = '';
+  fetchUsers(true);
+};
+
 const stats = ref({
   schools: 0,
   students: 0,
@@ -241,7 +271,7 @@ const getUserPhoto = (user: any) => {
   if (user.profile_photo_path) {
     return user.profile_photo_path.startsWith('http') 
       ? user.profile_photo_path 
-      : `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/storage/${user.profile_photo_path}`;
+      : `${import.meta.env.VITE_API_URL?.replace('/api', '') || ''}/storage/${user.profile_photo_path}`;
   }
   return null;
 };
@@ -272,10 +302,26 @@ const fetchDashboardStats = async () => {
   }
 };
 
+const fetchSchoolsList = async () => {
+  try {
+    const res = await api.get('/admin/schools');
+    if (res.data.success) {
+      schoolsList.value = res.data.data.map((s: any) => ({ id: s.id, name: s.name }));
+    }
+  } catch (error) {
+    console.error('Error fetching schools list', error);
+  }
+};
+
 const fetchUsers = async (forceRefresh = false) => {
   if (forceRefresh) loadingUsers.value = true;
   try {
-    const res = await api.get('/admin/users');
+    const params: any = {};
+    if (searchQuery.value) params.search = searchQuery.value;
+    if (filterRole.value) params.role = filterRole.value;
+    if (filterSchoolId.value) params.school_id = filterSchoolId.value;
+
+    const res = await api.get('/admin/users', { params });
     if (res.data.success) {
       users.value = res.data.data;
     }
@@ -302,6 +348,7 @@ onMounted(async () => {
     if (active) activeSchoolName.value = active.name;
   }
   fetchDashboardStats();
+  fetchSchoolsList();
   fetchUsers();
 });
 </script>

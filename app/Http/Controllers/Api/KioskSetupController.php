@@ -90,21 +90,48 @@ class KioskSetupController extends Controller
             ], 404);
         }
 
+        // 2. Si el kiosco YA está activo, permitir reactivación:
+        //    Esto ocurre cuando la PWA pierde el token (ej. iOS limpia IndexedDB)
+        //    pero el backend sigue con is_active = true.
         if ($kiosk->is_active) {
+            // Revocar todos los tokens anteriores del kiosco
+            $kiosk->tokens()->delete();
+
+            // Actualizar nombre si se proporcionó
+            if ($request->device_name) {
+                $kiosk->update(['name' => $request->device_name]);
+            }
+
+            // Generar nuevo token
+            $apiToken = $kiosk->createToken('kiosk_monitor')->plainTextToken;
+            $kiosk->update(['device_token' => hash('sha256', $apiToken)]);
+
             return response()->json([
-                'success' => false,
-                'message' => 'Este código ya ha sido utilizado en otro dispositivo.'
-            ], 403);
+                'success' => true,
+                'message' => 'Dispositivo reconectado correctamente.',
+                'token' => $apiToken,
+                'kiosk' => [
+                    'id' => $kiosk->id,
+                    'name' => $kiosk->name,
+                    'schools' => $kiosk->load('schools')->schools->map(function ($s) {
+                        return [
+                            'id' => $s->id,
+                            'name' => $s->name,
+                            'logo_url' => $s->logo_path ? asset('storage/' . $s->logo_path) : null,
+                            'qr_scan_type' => $s->qr_scan_type
+                        ];
+                    })
+                ]
+            ], 200);
         }
 
-        // 2. Activamos el Kiosco
+        // 3. Activamos el Kiosco por primera vez
         $kiosk->update([
             'is_active' => true,
             'name' => $request->device_name ?? $kiosk->name
         ]);
 
         // 4. Generamos un token permanente (Sanctum) exclusivo para este Kiosco
-        // Ojo: Usamos un naming diferenciado de tokens para mayor seguridad
         $apiToken = $kiosk->createToken('kiosk_monitor')->plainTextToken;
 
         // Lo guardamos en su base de datos para rastreo rápido

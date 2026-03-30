@@ -4,7 +4,7 @@ import { storage } from './storage';
 // Crea una instancia de Axios pre-configurada
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api', // Reemplazar por URL en Producción
-    timeout: 15000,
+    timeout: 60000,
     headers: {
         'Accept': 'application/json'
     }
@@ -23,6 +23,11 @@ api.interceptors.request.use(
 
         if (val) {
             config.headers.Authorization = `Bearer ${val}`;
+        }
+
+        // Debug: Log token status for kiosk endpoints
+        if (isKioskEndpoint) {
+            console.log(`[API] ${config.method?.toUpperCase()} ${config.url} | kiosk_token: ${kioskVal ? 'presente (' + kioskVal.substring(0, 8) + '...)' : 'AUSENTE'}`);
         }
 
         // Inyectar el ID de la escuela actual para filtrado en el backend

@@ -210,7 +210,7 @@ const user = ref<any>(null);
 const avatarUrl = computed(() => {
   if (user.value?.avatar_url) return user.value.avatar_url;
   if (user.value?.profile_photo_path) {
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
     return `${baseUrl}/storage/${user.value.profile_photo_path}`;
   }
   return null;

@@ -413,7 +413,7 @@ onMounted(async () => {
         form.value.maxKiosks = data.owned_kiosks?.length || 1;
         
         if (data.logo_path) {
-          logoPreview.value = data.logo_path.startsWith('http') ? data.logo_path : 'http://localhost:8000/storage/' + data.logo_path;
+          logoPreview.value = data.logo_path.startsWith('http') ? data.logo_path : (import.meta.env.VITE_API_URL?.replace('/api', '') || '') + '/storage/' + data.logo_path;
         }
         if (data.owned_kiosks && data.owned_kiosks.length > 0) {
             dummyKiosks.value = data.owned_kiosks.map((k: any) => k.activation_code);

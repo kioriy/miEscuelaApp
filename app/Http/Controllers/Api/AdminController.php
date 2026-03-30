@@ -173,13 +173,42 @@ class AdminController extends Controller
     {
         $schoolId = $this->getSchoolId($request);
 
+        $query = \App\Models\User::with(['school', 'schools']);
+
+        // Filtro por contexto de escuela (X-School-Id header)
         if ($schoolId) {
-            $users = \App\Models\User::whereHas('schools', function ($q) use ($schoolId) {
-                $q->where('schools.id', $schoolId);
-            })->orWhere('school_id', $schoolId)->with(['school', 'schools'])->get();
-        } else {
-            $users = \App\Models\User::with(['school', 'schools'])->get();
+            $query->where(function ($q) use ($schoolId) {
+                $q->whereHas('schools', function ($sub) use ($schoolId) {
+                    $sub->where('schools.id', $schoolId);
+                })->orWhere('school_id', $schoolId);
+            });
         }
+
+        // Filtro por búsqueda (nombre o email)
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        // Filtro por rol
+        if ($request->filled('role')) {
+            $query->where('role', $request->input('role'));
+        }
+
+        // Filtro por escuela específica (distinto al contexto global X-School-Id)
+        if ($request->filled('school_id')) {
+            $filterSchoolId = $request->input('school_id');
+            $query->where(function ($q) use ($filterSchoolId) {
+                $q->whereHas('schools', function ($sub) use ($filterSchoolId) {
+                    $sub->where('schools.id', $filterSchoolId);
+                })->orWhere('school_id', $filterSchoolId);
+            });
+        }
+
+        $users = $query->orderBy('name')->get();
 
         return response()->json([
             'success' => true,
@@ -1013,7 +1042,7 @@ class AdminController extends Controller
 
         // Usar Validator manualmente para capturar y devolver el error exacto
         $validator = Validator::make($request->all(), [
-            'zip_file' => 'required|file|max:102400', // Subido a 100MB
+            'zip_file' => 'required|file|max:256000', // 250MB
         ]);
 
         if ($validator->fails()) {
@@ -1056,7 +1085,10 @@ class AdminController extends Controller
         $errors = [];
 
         // Obtener todos los alumnos de la escuela para cachear nombres
-        $students = \App\Models\Student::where('school_id', $school_id)->get();
+        // Si school_id es null (super_admin sin escuela seleccionada), buscar en todas las escuelas
+        $students = $school_id
+            ? \App\Models\Student::where('school_id', $school_id)->get()
+            : \App\Models\Student::all();
 
         foreach ($files as $filename) {
             if ($filename === '.' || $filename === '..' || is_dir($tempPath . '/' . $filename)) continue;
@@ -1105,12 +1137,18 @@ class AdminController extends Controller
 
     private function normalizeString($str)
     {
+        // Normalizar Unicode a forma compuesta (NFC) para manejar archivos de macOS (NFD)
+        if (function_exists('normalizer_normalize')) {
+            $str = \Normalizer::normalize($str, \Normalizer::FORM_C);
+        }
         $str = strtolower($str);
         $str = str_replace(
             ['á', 'é', 'í', 'ó', 'ú', 'ñ', 'ü'],
             ['a', 'e', 'i', 'o', 'u', 'n', 'u'],
             $str
         );
+        // Eliminar marcas diacriticas restantes (tildes, acentos combinantes)
+        $str = preg_replace('/\pM/u', '', $str);
         // Reemplazar cualquier cosa que no sea letras o números por un espacio
         $str = preg_replace('/[^a-z0-9]/', ' ', $str);
         // Colapsar espacios múltiples y limpiar
@@ -1149,6 +1187,19 @@ class AdminController extends Controller
         $endDate = $now->copy()->endOfDay()->setTimezone('UTC');
 
         switch ($range) {
+            case 'day':
+                $startDate = $now->copy()->startOfDay()->setTimezone('UTC');
+                break;
+            case 'custom':
+                $customDate = $request->query('date');
+                if ($customDate) {
+                    $parsedDate = \Illuminate\Support\Carbon::parse($customDate, $timezone);
+                    $startDate = $parsedDate->copy()->startOfDay()->setTimezone('UTC');
+                    $endDate = $parsedDate->copy()->endOfDay()->setTimezone('UTC');
+                } else {
+                    $startDate = $now->copy()->startOfDay()->setTimezone('UTC');
+                }
+                break;
             case 'month':
                 $startDate = $now->copy()->startOfMonth()->startOfDay()->setTimezone('UTC');
                 break;
@@ -1161,21 +1212,14 @@ class AdminController extends Controller
                 break;
         }
 
-        // Count school days in range (weekdays)
-        $schoolDays = 0;
-        $cursor = $now->copy()->startOfWeek();
-        $endCursor = $now->copy();
-        if ($range === 'month') {
-            $cursor = $now->copy()->startOfMonth();
-        } elseif ($range === 'quarter') {
-            $cursor = $now->copy()->subMonths(3);
-        }
-        while ($cursor->lte($endCursor)) {
-            if (!$cursor->isWeekend()) {
-                $schoolDays++;
-            }
-            $cursor->addDay();
-        }
+        // Count school days as unique dates with actual attendance records in range
+        // This avoids counting periods before the school started using the system
+        $schoolDays = \App\Models\AttendanceLog::where('school_id', $schoolId)
+            ->where('type', 'in')
+            ->where('scanned_at', '>=', $startDate)
+            ->where('scanned_at', '<=', $endDate)
+            ->selectRaw("COUNT(DISTINCT DATE(CONVERT_TZ(scanned_at, '+00:00', ?))) as days_count", [$this->tzOffset($timezone)])
+            ->value('days_count');
         $schoolDays = max($schoolDays, 1);
 
         // Get all students for this school with their classroom
@@ -1314,6 +1358,15 @@ class AdminController extends Controller
         $maxTotal = $totalStudents * $schoolDays;
         $avgAttendance = $maxTotal > 0 ? round(($totalPresent / $maxTotal) * 100, 1) : 0;
 
+        // Get the earliest attendance record date for the school (for calendar min date)
+        $earliestLog = \App\Models\AttendanceLog::where('school_id', $schoolId)
+            ->where('type', 'in')
+            ->orderBy('scanned_at', 'asc')
+            ->first();
+        $minDate = $earliestLog
+            ? $earliestLog->scanned_at->copy()->setTimezone($timezone)->format('Y-m-d')
+            : now($timezone)->format('Y-m-d');
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -1324,6 +1377,7 @@ class AdminController extends Controller
                     'totalLates' => $totalLates,
                     'schoolDays' => $schoolDays
                 ],
+                'minDate' => $minDate,
                 'gradeStats' => $gradeStats,
                 'groupStats' => $groupStats,
                 'studentStats' => $studentStatsArr

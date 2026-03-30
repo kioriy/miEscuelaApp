@@ -15,6 +15,8 @@ return new class extends Migration
             $table->id();
             $table->string('name', 150);
             $table->string('slug', 50)->unique();
+            $table->string('address')->nullable();
+            $table->string('contact_phone', 20)->nullable();
             $table->string('logo_path')->nullable();
             $table->string('timezone', 50)->default('America/Mexico_City');
             $table->integer('allowed_kiosks')->default(1);

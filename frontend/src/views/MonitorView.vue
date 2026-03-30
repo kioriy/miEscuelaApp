@@ -334,6 +334,8 @@ const fetchStats = async () => {
   }
 };
 
+let schoolInfoRetryCount = 0;
+
 const fetchSchoolInfo = async () => {
   try {
     const res = await api.get('/sync/monitor/school');
@@ -341,16 +343,57 @@ const fetchSchoolInfo = async () => {
       // The API now returns an array of schools
       schoolInfo.value.schools = res.data.data.schools || [];
       schoolInfo.value.kioskName = res.data.data.kiosk_name;
+      schoolInfoRetryCount = 0;
+
+      // Actualizar la config cacheada con datos frescos del servidor
+      const cachedConfig = await storage.get('kiosk_config');
+      if (cachedConfig) {
+        cachedConfig.schools = res.data.data.schools;
+        cachedConfig.name = res.data.data.kiosk_name;
+        await storage.set('kiosk_config', cachedConfig);
+      }
     }
   } catch (error: any) {
-    console.error('Error fetching school info:', error);
+    console.error('Error fetching school info:', error?.response?.status, error?.message);
+
+    // Siempre intentar datos cacheados primero
+    const cachedConfig = await storage.get('kiosk_config');
+
     if (error.response?.status === 401) {
-      console.warn('⚠️ Token de Kiosco revocado o inválido. Redirigiendo a activación...');
-      await storage.remove('kiosk_config');
-      await storage.remove('kiosk_token');
-      router.push('/monitor/activate');
+      console.warn('⚠️ Token de Kiosco inválido (401). kiosk_token:', (await storage.get('kiosk_token'))?.substring(0, 8) || 'AUSENTE');
+
+      // Solo limpiar y redirigir si no hay datos cacheados O si es un reintento persistente
+      schoolInfoRetryCount++;
+      if (schoolInfoRetryCount >= 3) {
+        console.warn('⚠️ 3 intentos de 401 consecutivos. Redirigiendo a activación...');
+        await storage.remove('kiosk_config');
+        await storage.remove('kiosk_token');
+        router.push('/monitor/activate');
+        return;
+      }
+
+      // En los primeros intentos, usar cache y reintentar
+      if (cachedConfig && cachedConfig.schools && cachedConfig.schools.length > 0) {
+        schoolInfo.value.schools = cachedConfig.schools;
+        schoolInfo.value.kioskName = cachedConfig.name || 'Kiosco';
+        console.log('📦 Usando datos cacheados. Reintentando en 5s...');
+        setTimeout(fetchSchoolInfo, 5000);
+      } else {
+        // Sin cache y con 401, no queda más que redirigir
+        await storage.remove('kiosk_config');
+        await storage.remove('kiosk_token');
+        router.push('/monitor/activate');
+      }
     } else {
-      schoolInfo.value.kioskName = 'Error de conexión';
+      // Error de red u otro error (no 401) - usar cache sin limpiar
+      if (cachedConfig && cachedConfig.schools && cachedConfig.schools.length > 0) {
+        schoolInfo.value.schools = cachedConfig.schools;
+        schoolInfo.value.kioskName = cachedConfig.name || 'Kiosco';
+        console.log('📦 Usando datos cacheados del kiosco como respaldo.');
+      } else {
+        schoolInfo.value.kioskName = 'Error de conexión - Reintentando...';
+        setTimeout(fetchSchoolInfo, 10000);
+      }
     }
   }
 };
@@ -648,7 +691,7 @@ onMounted(async () => {
     } else if (user.profile_photo_path) {
       userProfile.value.photo = user.profile_photo_path.startsWith('http') 
         ? user.profile_photo_path 
-        : `http://localhost:8000/storage/${user.profile_photo_path}`;
+        : `${import.meta.env.VITE_API_URL?.replace('/api', '') || ''}/storage/${user.profile_photo_path}`;
     }
   }
 

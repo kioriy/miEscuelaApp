@@ -127,28 +127,15 @@ const handleBackspace = (event: any, idx: number) => {
 };
 
 const activateKiosk = async () => {
-  // original format was K-{1 Char}-{4 Chars}-{2 Chars}. Actually, let me verify the DB format.
-  // DB format is `K-A123-55` (K - 4 chars - 2 chars). 7 chars total.
-  // pinDigits is array of 7 items (length 7). So it's:
-  // pinDigits[0...3] (4 chars)  pinDigits[4...5] (2 chars)... wait. 7 items = 0..6
-  const code = 'K-' + 
-               pinDigits.value.slice(0, 4).join('').toUpperCase() + '-' + 
-               pinDigits.value.slice(4, 6).join('').toUpperCase(); // Actually wait, 4 and 2 chars is only 6 chars total, leaving [6].
-               
-  // Looking at the view component:
-  // Group 1: v-model="pinDigits[0]" -> 1 length
-  // Group 2: v-for="i in [1, 2, 3, 4]" v-model="pinDigits[i]" -> 4 length
-  // Group 3: v-for="i in [5, 6]" v-model="pinDigits[i]" -> 2 length
-  // Total = 7 items. So `code = pinDigits[0] + pinDigits[1..4] + pinDigits[5..6]` -> `K-X-XXXX-XX` ? No!
-  // The DB shows: "K-81F6-13" which is K - 4 chars - 2 chars. That's ONLY 6 input chars!
-  
-  const formattedCode = pinDigits.value[0] + '-' + 
-               pinDigits.value.slice(1, 5).join('').toUpperCase() + '-' + 
+  // Formato: X-XXXX-XX (7 caracteres del input)
+  // pinDigits[0] = primer caracter, [1..4] = grupo medio, [5..6] = grupo final
+  const codeString = pinDigits.value[0].toUpperCase() + '-' +
+               pinDigits.value.slice(1, 5).join('').toUpperCase() + '-' +
                pinDigits.value.slice(5, 7).join('').toUpperCase();
 
-  const codeString = formattedCode;
   isLoading.value = true;
-  
+  console.log('[Activate] Enviando código:', codeString);
+
   try {
     const res = await api.post('/setup/kiosk/activate', {
       activation_code: codeString,
@@ -156,10 +143,23 @@ const activateKiosk = async () => {
     });
 
     if (res.data.success) {
+      console.log('[Activate] Éxito. Guardando token y config...');
+
       // Store the kiosk token separately from the admin auth_token
       await storage.set('kiosk_token', res.data.token);
       await storage.set('kiosk_config', res.data.kiosk);
-      
+
+      // Verificar que se guardó correctamente
+      const savedToken = await storage.get('kiosk_token');
+      const savedConfig = await storage.get('kiosk_config');
+      console.log('[Activate] Token guardado:', savedToken ? savedToken.substring(0, 8) + '...' : 'FALLO');
+      console.log('[Activate] Config guardada:', savedConfig ? 'OK (' + (savedConfig.schools?.length || 0) + ' escuelas)' : 'FALLO');
+
+      if (!savedToken || !savedConfig) {
+        alert('Error al guardar la configuración del kiosco. Intente de nuevo.');
+        return;
+      }
+
       router.push('/monitor');
     }
   } catch (error: any) {
