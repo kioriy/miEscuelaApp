@@ -127,67 +127,61 @@
         </div>
       </div>
 
-      <!-- Table Scroll -->
-      <div class="overflow-x-auto overflow-y-hidden">
-        <table class="w-full text-left border-collapse">
+      <!-- Table -->
+      <div class="overflow-hidden">
+        <table class="w-full text-left border-collapse table-fixed">
           <thead>
-            <tr class="bg-gray-50/50 text-[10px] font-black tracking-widest text-gray-500 uppercase border-b border-gray-100 whitespace-nowrap">
-              <th class="p-4 pl-6">Nombre</th>
-              <th class="p-4">Email</th>
-              <th class="p-4 min-w-[200px]">Escuela Asignada</th>
-              <th class="p-4">Rol</th>
-              <th class="p-4">Estatus</th>
-              <th class="p-4 pr-6 text-right">Acciones</th>
+            <tr class="bg-gray-50/50 text-[10px] font-black tracking-widest text-gray-500 uppercase border-b border-gray-100">
+              <th class="p-3 pl-5" style="width: 22%">Nombre</th>
+              <th class="p-3" style="width: 22%">Email</th>
+              <th class="p-3" style="width: 20%">Escuela</th>
+              <th class="p-3" style="width: 10%">Rol</th>
+              <th class="p-3 pr-5 text-right" style="width: 26%">Acciones</th>
             </tr>
           </thead>
           <tbody class="text-sm">
             <tr v-if="loadingUsers">
-              <td colspan="6" class="p-8 text-center text-gray-400 font-medium">Cargando usuarios...</td>
+              <td colspan="5" class="p-8 text-center text-gray-400 font-medium">Cargando usuarios...</td>
             </tr>
             <tr v-else-if="users.length === 0">
-              <td colspan="6" class="p-8 text-center text-gray-400 font-medium">No hay usuarios registrados.</td>
+              <td colspan="5" class="p-8 text-center text-gray-400 font-medium">No hay usuarios registrados.</td>
             </tr>
             <tr v-else v-for="user in users" :key="user.id" class="border-b border-gray-50 hover:bg-gray-50/80 transition-colors">
-              <td class="p-4 pl-6 whitespace-nowrap">
-                <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center text-brand-blue font-black border border-orange-200 shadow-sm overflow-hidden shrink-0">
+              <td class="p-3 pl-5">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <div class="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center font-black border border-orange-200 shadow-sm overflow-hidden shrink-0">
                     <img v-if="getUserPhoto(user)" :src="getUserPhoto(user)" class="w-full h-full object-cover" />
-                    <ion-icon v-else :icon="personOutline" class="text-xl text-gray-400"></ion-icon>
+                    <ion-icon v-else :icon="personOutline" class="text-base text-gray-400"></ion-icon>
                   </div>
-                  <div>
-                    <p class="font-bold text-gray-900 leading-tight">{{ user.name }}</p>
-                  </div>
+                  <p class="font-bold text-gray-900 text-[13px] leading-tight truncate">{{ user.name }}</p>
                 </div>
               </td>
-              <td class="p-4 text-brand-blue font-medium text-[13px] whitespace-nowrap">
-                {{ user.email }}
+              <td class="p-3">
+                <p class="text-brand-blue font-medium text-[12px] truncate">{{ user.email }}</p>
               </td>
-              <td class="p-4 font-bold text-gray-900 text-[13px] whitespace-normal min-w-[200px] max-w-[300px] leading-snug">
-                {{ getAssignedSchools(user) }}
+              <td class="p-3">
+                <p class="font-semibold text-gray-700 text-[12px] truncate leading-snug" :title="getAssignedSchools(user)">{{ getAssignedSchools(user) }}</p>
               </td>
-              <td class="p-4 whitespace-nowrap">
-                <span v-if="user.role === 'super_admin'" class="bg-gray-100 border border-gray-200 text-gray-600 text-[11px] px-2.5 py-1 rounded-full font-bold">Súper Admin</span>
-                <span v-else-if="user.role === 'director'" class="bg-indigo-50 border border-indigo-100 text-indigo-600 text-[11px] px-2.5 py-1 rounded-full font-bold">Director</span>
-                <span v-else-if="user.role === 'teacher'" class="bg-brand-blue/10 border border-brand-blue/20 text-brand-blue text-[11px] px-2.5 py-1 rounded-full font-bold">Maestro</span>
-                <span v-else-if="user.role === 'parent'" class="bg-emerald-50 border border-emerald-100 text-emerald-600 text-[11px] px-2.5 py-1 rounded-full font-bold">Padre / Tutor</span>
-                <span v-else class="bg-brand-blue/10 border border-brand-blue/20 text-brand-blue text-[11px] px-2.5 py-1 rounded-full font-bold">{{ user.role }}</span>
+              <td class="p-3">
+                <span v-if="user.role === 'super_admin'" class="bg-gray-100 border border-gray-200 text-gray-600 text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap">Admin</span>
+                <span v-else-if="user.role === 'director'" class="bg-indigo-50 border border-indigo-100 text-indigo-600 text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap">Director</span>
+                <span v-else-if="user.role === 'teacher'" class="bg-brand-blue/10 border border-brand-blue/20 text-brand-blue text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap">Maestro</span>
+                <span v-else-if="user.role === 'parent'" class="bg-emerald-50 border border-emerald-100 text-emerald-600 text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap">Padre</span>
+                <span v-else class="bg-brand-blue/10 border border-brand-blue/20 text-brand-blue text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap">{{ user.role }}</span>
               </td>
-              <td class="p-4 whitespace-nowrap">
-                <span class="bg-green-100/50 border border-green-200 text-green-700 text-[11px] px-2.5 py-1 rounded-full font-bold">Activo</span>
-              </td>
-              <td class="p-4 pr-6 whitespace-nowrap">
-                <div class="flex items-center justify-end gap-2 text-gray-400">
-                  <button @click="$router.push(`/admin/users/${user.id}`)" class="hover:text-brand-blue flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-blue-50 transition-colors text-[12px] font-semibold">
-                    <ion-icon :icon="eyeOutline" class="text-sm"></ion-icon>
-                    <span>Ver</span>
+              <td class="p-3 pr-5">
+                <div class="flex items-center justify-end gap-1.5">
+                  <button v-if="user.role !== 'super_admin'" @click="impersonateUser(user)" :disabled="impersonatingId === user.id" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors" :title="impersonatingId === user.id ? 'Ingresando...' : 'Suplantar usuario'">
+                    <ion-icon :icon="enterOutline" class="text-base"></ion-icon>
                   </button>
-                  <button @click="$router.push(`/admin/users/${user.id}/edit`)" class="hover:text-gray-900 flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors text-[12px] font-semibold">
-                    <ion-icon :icon="createOutline" class="text-sm"></ion-icon>
-                    <span>Editar</span>
+                  <button @click="$router.push(`/admin/users/${user.id}`)" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-brand-blue hover:bg-blue-50 transition-colors" title="Ver detalle">
+                    <ion-icon :icon="eyeOutline" class="text-base"></ion-icon>
                   </button>
-                  <button class="hover:text-red-500 flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-red-50 transition-colors text-[12px] font-semibold">
-                    <ion-icon :icon="trashOutline" class="text-sm"></ion-icon>
-                    <span>Eliminar</span>
+                  <button @click="$router.push(`/admin/users/${user.id}/edit`)" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors" title="Editar">
+                    <ion-icon :icon="createOutline" class="text-base"></ion-icon>
+                  </button>
+                  <button class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Eliminar">
+                    <ion-icon :icon="trashOutline" class="text-base"></ion-icon>
                   </button>
                 </div>
               </td>
@@ -217,8 +211,9 @@ import { ref, computed, onMounted } from 'vue';
 import { IonPage, IonContent, IonIcon, IonRefresher, IonRefresherContent } from '@ionic/vue';
 import { 
   downloadOutline, personAddOutline, searchOutline, chevronDown, filter,
-  createOutline, trashOutline, eyeOutline, push, documentText, grid, refreshOutline, personOutline, business
+  createOutline, trashOutline, eyeOutline, push, documentText, grid, refreshOutline, personOutline, business, enterOutline
 } from 'ionicons/icons';
+import { toastController } from '@ionic/vue';
 import api from '@/services/api';
 import { storage } from '@/services/storage';
 
@@ -329,6 +324,84 @@ const fetchUsers = async (forceRefresh = false) => {
     console.error('Error fetching users', error);
   } finally {
     loadingUsers.value = false;
+  }
+};
+
+const impersonatingId = ref<number | null>(null);
+
+const impersonateUser = async (user: any) => {
+  if (impersonatingId.value) return;
+  impersonatingId.value = user.id;
+  
+  try {
+    // Save current admin session before impersonating
+    const currentToken = await storage.get('auth_token');
+    const currentUser = await storage.get('auth_user');
+    const currentSchools = await storage.get('user_schools');
+    const currentProfiles = await storage.get('available_profiles');
+    const currentSchoolId = await storage.get('current_school_id');
+    
+    // Call impersonation endpoint
+    const res = await api.post(`/admin/impersonate/${user.id}`);
+    
+    if (res.data.success) {
+      // Store admin session for later restoration
+      await storage.set('impersonation_admin_token', currentToken);
+      await storage.set('impersonation_admin_user', currentUser);
+      await storage.set('impersonation_admin_schools', currentSchools);
+      await storage.set('impersonation_admin_profiles', currentProfiles);
+      await storage.set('impersonation_admin_school_id', currentSchoolId);
+      
+      // Set the impersonated user's session
+      await storage.set('auth_token', res.data.token);
+      await storage.set('auth_user', res.data.user);
+      await storage.set('user_schools', res.data.schools || []);
+      await storage.set('available_profiles', res.data.available_profiles || [res.data.user.role]);
+      
+      // Set the initial profile for the impersonated user
+      const profiles = res.data.available_profiles || [res.data.user.role];
+      let initialProfile = res.data.user.role;
+      if (profiles.includes('director')) initialProfile = 'director';
+      else if (profiles.includes('teacher')) initialProfile = 'teacher';
+      else if (profiles.includes('parent')) initialProfile = 'parent';
+      
+      await storage.set('current_profile', initialProfile);
+      
+      // Set school context
+      if (res.data.schools && res.data.schools.length > 0) {
+        await storage.set('current_school_id', res.data.schools[0].id);
+      } else if (res.data.user.school_id) {
+        await storage.set('current_school_id', res.data.user.school_id);
+      }
+      
+      const toast = await toastController.create({
+        message: `Ahora estás viendo como ${res.data.user.name}`,
+        duration: 3000,
+        color: 'warning',
+        position: 'top'
+      });
+      await toast.present();
+      
+      // Navigate to the appropriate dashboard with full reload
+      if (['super_admin', 'director', 'teacher'].includes(initialProfile)) {
+        window.location.href = '/admin/dashboard';
+      } else if (initialProfile === 'parent') {
+        window.location.href = '/parent/dashboard';
+      } else {
+        window.location.href = '/admin/dashboard';
+      }
+    }
+  } catch (error: any) {
+    console.error('Error impersonating user:', error);
+    const msg = error.response?.data?.message || 'Error al suplantar usuario.';
+    const toast = await toastController.create({
+      message: msg,
+      duration: 4000,
+      color: 'danger',
+      position: 'top'
+    });
+    await toast.present();
+    impersonatingId.value = null;
   }
 };
 

@@ -215,12 +215,12 @@
     <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col mb-4">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div class="flex items-center gap-4">
-          <div class="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-brand-blue shrink-0">
-            <ion-icon :icon="push" class="text-lg"></ion-icon>
+          <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" :class="importMode === 'import' ? 'bg-blue-50 text-brand-blue' : 'bg-amber-50 text-amber-600'">
+            <ion-icon :icon="importMode === 'import' ? push : refreshCircleOutline" class="text-lg"></ion-icon>
           </div>
           <div>
-            <h3 class="text-lg font-bold text-gray-900 tracking-tight">Carga Masiva de Alumnos</h3>
-            <p class="text-gray-500 text-[13px] font-medium">Importar datos desde archivo (CSV, XLSX, JSON)</p>
+            <h3 class="text-lg font-bold text-gray-900 tracking-tight">{{ importMode === 'import' ? 'Carga Masiva de Alumnos' : 'Actualización Masiva de Alumnos' }}</h3>
+            <p class="text-gray-500 text-[13px] font-medium">{{ importMode === 'import' ? 'Importar nuevos registros desde archivo (CSV, XLSX, JSON)' : 'Actualizar datos de alumnos existentes (usa la matrícula como identificador)' }}</p>
           </div>
         </div>
         
@@ -259,13 +259,43 @@
         </div>
       </div>
 
+      <!-- Mode Toggle -->
+      <div class="flex items-center gap-1 bg-gray-100 rounded-xl p-1 mb-4 w-max">
+        <button 
+          @click="importMode = 'import'; importResults = null;" 
+          :class="importMode === 'import' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+          class="px-4 py-2 rounded-lg text-[13px] font-bold transition-all flex items-center gap-2"
+        >
+          <ion-icon :icon="push" class="text-base"></ion-icon>
+          Importar Nuevos
+        </button>
+        <button 
+          @click="importMode = 'update'; importResults = null;" 
+          :class="importMode === 'update' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+          class="px-4 py-2 rounded-lg text-[13px] font-bold transition-all flex items-center gap-2"
+        >
+          <ion-icon :icon="refreshCircleOutline" class="text-base"></ion-icon>
+          Actualizar Existentes
+        </button>
+      </div>
+
+      <!-- Update Mode Info Banner -->
+      <div v-if="importMode === 'update'" class="bg-amber-50/70 border border-amber-200 rounded-xl p-4 mb-4 flex items-start gap-3">
+        <ion-icon :icon="informationCircleOutline" class="text-amber-600 text-xl shrink-0 mt-0.5"></ion-icon>
+        <div>
+          <p class="text-[13px] font-bold text-amber-800 mb-1">Modo Actualización Masiva</p>
+          <p class="text-[12px] text-amber-700 leading-relaxed">El archivo debe contener la columna <strong>matrícula</strong> para identificar a cada alumno. Solo se actualizarán los campos que tengan datos en el archivo; las celdas vacías se ignorarán sin borrar la información existente.</p>
+          <p class="text-[12px] text-amber-700 mt-1.5"><strong>Ejemplo:</strong> Para agregar sólo correos, sube un archivo con columnas: matrícula, email_tutor</p>
+        </div>
+      </div>
+
       <div 
         @click="triggerFileUpload"
         @dragover.prevent="isDragging = true"
         @dragleave.prevent="isDragging = false"
         @drop.prevent="handleDrop"
         :class="{'border-brand-blue bg-blue-50/20': isDragging, 'border-gray-200': !isDragging}"
-        class="border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center hover:border-brand-blue hover:bg-blue-50/10 transition-all cursor-pointer group mt-2"
+        class="border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center hover:border-brand-blue hover:bg-blue-50/10 transition-all cursor-pointer group"
       >
         <input id="bulkUploadInput" type="file" ref="fileInput" @change="handleFileSelect" class="hidden" accept=".csv,.xlsx,.json,.txt" />
         
@@ -285,24 +315,26 @@
              </div>
           </div>
           <h4 class="text-sm font-bold text-gray-900 mb-1">Arrastra tu archivo aquí o haz clic para subir</h4>
-          <p class="text-xs text-gray-400 font-medium">matricula, nombre, apellidos, nivel, grado, grupo, turno, email_tutor, email_tutor_2</p>
+          <p v-if="importMode === 'import'" class="text-xs text-gray-400 font-medium">matricula, nombre, apellidos, nivel, grado, grupo, turno, email_tutor, email_tutor_2</p>
+          <p v-else class="text-xs text-amber-500 font-medium">matrícula (obligatoria) + los campos que deseas actualizar</p>
           <p class="text-xs text-gray-400 font-medium">Tamaño máximo: 10MB</p>
         </div>
 
         <div v-else class="flex flex-col items-center py-4">
           <div class="w-12 h-12 border-4 border-blue-100 border-t-brand-blue rounded-full animate-spin mb-4"></div>
-          <p class="text-sm font-bold text-gray-700">Procesando archivo...</p>
+          <p class="text-sm font-bold text-gray-700">{{ importMode === 'import' ? 'Procesando importación...' : 'Procesando actualización...' }}</p>
           <p class="text-xs text-gray-400 mt-1">Esto puede tomar unos segundos.</p>
         </div>
       </div>
 
-      <!-- Import Summary -->
+      <!-- Import/Update Results Summary -->
       <div v-if="importResults" class="mt-6 p-4 bg-gray-50 rounded-2xl border border-gray-100">
         <div class="flex items-center justify-between mb-3">
-          <h4 class="text-sm font-bold text-gray-900">Resultado de Importación</h4>
+          <h4 class="text-sm font-bold text-gray-900">{{ importMode === 'import' ? 'Resultado de Importación' : 'Resultado de Actualización' }}</h4>
           <button @click="importResults = null" class="text-gray-400 hover:text-gray-600 font-bold text-xs">Cerrar</button>
         </div>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <!-- Import mode results -->
+        <div v-if="importMode === 'import'" class="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div class="bg-white p-3 rounded-xl border border-gray-100 text-center">
             <p class="text-lg font-black text-gray-900">{{ importResults.total }}</p>
             <p class="text-[10px] font-bold text-gray-400 uppercase">Total</p>
@@ -319,6 +351,36 @@
             <p class="text-lg font-black text-red-500">{{ importResults.errors.length }}</p>
             <p class="text-[10px] font-bold text-gray-400 uppercase">Errores</p>
           </div>
+        </div>
+        <!-- Update mode results -->
+        <div v-else class="grid grid-cols-2 sm:grid-cols-5 gap-4">
+          <div class="bg-white p-3 rounded-xl border border-gray-100 text-center">
+            <p class="text-lg font-black text-gray-900">{{ importResults.total }}</p>
+            <p class="text-[10px] font-bold text-gray-400 uppercase">Total</p>
+          </div>
+          <div class="bg-white p-3 rounded-xl border border-gray-100 text-center">
+            <p class="text-lg font-black text-emerald-600">{{ importResults.updated }}</p>
+            <p class="text-[10px] font-bold text-gray-400 uppercase">Actualizados</p>
+          </div>
+          <div class="bg-white p-3 rounded-xl border border-gray-100 text-center">
+            <p class="text-lg font-black text-orange-500">{{ importResults.not_found }}</p>
+            <p class="text-[10px] font-bold text-gray-400 uppercase">No Encontrados</p>
+          </div>
+          <div class="bg-white p-3 rounded-xl border border-gray-100 text-center">
+            <p class="text-lg font-black text-amber-500">{{ importResults.skipped }}</p>
+            <p class="text-[10px] font-bold text-gray-400 uppercase">Sin Cambios</p>
+          </div>
+          <div class="bg-white p-3 rounded-xl border border-gray-100 text-center">
+            <p class="text-lg font-black text-red-500">{{ importResults.errors.length }}</p>
+            <p class="text-[10px] font-bold text-gray-400 uppercase">Errores</p>
+          </div>
+        </div>
+        <!-- Details for update mode -->
+        <div v-if="importMode === 'update' && importResults.details && importResults.details.length > 0" class="mt-4 max-h-40 overflow-y-auto bg-emerald-50/50 rounded-lg p-3">
+          <p class="text-[11px] font-bold text-emerald-700 mb-1">Detalle de actualizaciones:</p>
+          <ul class="text-[10px] text-emerald-600 space-y-1">
+            <li v-for="(detail, idx) in importResults.details" :key="'d'+idx">✓ {{ detail }}</li>
+          </ul>
         </div>
         <div v-if="importResults.errors.length > 0" class="mt-4 max-h-32 overflow-y-auto bg-red-50/50 rounded-lg p-3">
           <p class="text-[11px] font-bold text-red-700 mb-1">Detalle de errores:</p>
@@ -340,7 +402,8 @@ import {
   addOutline, trendingUpOutline, business, push, documentText, grid,
   listOutline, searchOutline, filterOutline, locationOutline, eyeOutline, 
   createOutline, documentTextOutline, navigateCircleOutline, refreshOutline,
-  chevronDown, peopleOutline, briefcaseOutline
+  chevronDown, peopleOutline, briefcaseOutline, refreshCircleOutline,
+  informationCircleOutline
 } from 'ionicons/icons';
 import api from '@/services/api';
 import { storage } from '@/services/storage';
@@ -364,6 +427,7 @@ const searchQuery = ref('');
 const statusFilter = ref('all');
 
 // Bulk Import State
+const importMode = ref<'import' | 'update'>('import');
 const importSchoolId = ref('');
 const importSchoolSearch = ref('');
 const isImportSchoolDropdownOpen = ref(false);
@@ -497,8 +561,13 @@ const uploadFile = async (file: File) => {
   const formData = new FormData();
   formData.append('file', file);
 
+  // Choose endpoint based on mode
+  const endpoint = importMode.value === 'update'
+    ? `/admin/schools/${importSchoolId.value}/students/bulk-update`
+    : `/admin/schools/${importSchoolId.value}/students/import`;
+
   try {
-    const res = await api.post(`/admin/schools/${importSchoolId.value}/students/import`, formData, {
+    const res = await api.post(endpoint, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     
@@ -508,8 +577,8 @@ const uploadFile = async (file: File) => {
       fetchSchools();
     }
   } catch (error: any) {
-    console.error('Error importing students', error);
-    alert(error.response?.data?.message || 'Error al importar los estudiantes.');
+    console.error('Error in bulk operation', error);
+    alert(error.response?.data?.message || (importMode.value === 'update' ? 'Error al actualizar los alumnos.' : 'Error al importar los estudiantes.'));
   } finally {
     isUploading.value = false;
     if (fileInput.value) fileInput.value.value = '';

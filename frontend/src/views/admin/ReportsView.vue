@@ -599,6 +599,77 @@ ion-modal.date-picker-modal .ion-page {
   background: transparent !important;
 }
 ion-modal.date-picker-modal ion-datetime {
-  --background: #fff;
+  --background: #ffffff;
+  --background-rgb: 255, 255, 255;
+  
+  /* Calendar day text colors */
+  color: #1f2937;
+  --ion-text-color: #1f2937;
+  --ion-color-base: #1f2937;
+  
+  /* Selected day highlight */
+  --ion-color-primary: #3b82f6;
+  --ion-color-primary-rgb: 59, 130, 246;
+  
+  /* Month/year picker wheel columns */
+  --wheel-highlight-background: rgba(59, 130, 246, 0.08);
+  --wheel-highlight-border-radius: 8px;
+  --wheel-fade-background-rgb: 255, 255, 255;
+}
+
+/* Fix: Force day button text to be dark */
+ion-modal.date-picker-modal ion-datetime .calendar-day,
+ion-modal.date-picker-modal ion-datetime .calendar-day-today,
+ion-modal.date-picker-modal ion-datetime button.calendar-day {
+  color: #1f2937 !important;
+}
+
+/* Fix: Selected day remains white on blue */
+ion-modal.date-picker-modal ion-datetime .calendar-day-active,
+ion-modal.date-picker-modal ion-datetime button.calendar-day-active {
+  color: #ffffff !important;
+}
+
+/* Fix: Disabled/outside-month days */
+ion-modal.date-picker-modal ion-datetime .calendar-day-disabled {
+  color: #d1d5db !important;
+}
+
+/* Fix: Month/year picker column items text color */
+ion-modal.date-picker-modal ion-datetime .picker-item,
+ion-modal.date-picker-modal ion-datetime ion-picker-column-option {
+  color: #1f2937 !important;
+}
+
+/* Fix: Remove dark overlay/shadow on month/year picker columns */
+ion-modal.date-picker-modal ion-datetime .picker-highlight,
+ion-modal.date-picker-modal ion-datetime .picker-above-highlight,
+ion-modal.date-picker-modal ion-datetime .picker-below-highlight {
+  background: transparent !important;
+}
+
+ion-modal.date-picker-modal ion-datetime .picker-above-highlight {
+  background: linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0.5)) !important;
+}
+
+ion-modal.date-picker-modal ion-datetime .picker-below-highlight {
+  background: linear-gradient(to top, rgba(255,255,255,0.95), rgba(255,255,255,0.5)) !important;
+}
+
+/* Fix: Header and navigation text */
+ion-modal.date-picker-modal ion-datetime .calendar-month-year,
+ion-modal.date-picker-modal ion-datetime .calendar-header button,
+ion-modal.date-picker-modal ion-datetime .calendar-month-year ion-label {
+  color: #3b82f6 !important;
+}
+
+/* Fix: Day-of-week labels (L M X J V S D) */
+ion-modal.date-picker-modal ion-datetime .calendar-day-of-week {
+  color: #6b7280 !important;
+}
+
+/* Fix: Navigation arrows */
+ion-modal.date-picker-modal ion-datetime .calendar-next-prev ion-button {
+  color: #374151 !important;
 }
 </style>

@@ -3,7 +3,7 @@
     <div class="min-h-screen flex flex-col bg-[#F3F4F6] font-sans">
       
       <!-- Top Navigation Header -->
-      <header class="bg-white border-b border-gray-100 flex-none sticky top-0 z-50 shadow-sm" style="padding-top: env(safe-area-inset-top, 0px);">
+      <header class="bg-white border-b border-gray-100 flex-none sticky z-50 shadow-sm" :style="`padding-top: env(safe-area-inset-top, 0px); ${isImpersonating ? 'top: 52px' : 'top: 0'}`">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           
           <!-- Logo & Title -->
@@ -306,7 +306,11 @@ const fetchDashboardData = async () => {
    }
 };
 
-onMounted(() => {
+const isImpersonating = ref(false);
+
+onMounted(async () => {
+   const adminToken = await storage.get('impersonation_admin_token');
+   if (adminToken) isImpersonating.value = true;
    fetchDashboardData();
 });
 

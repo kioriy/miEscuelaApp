@@ -1,9 +1,12 @@
 <template>
   <ion-app>
+    <ImpersonationBanner />
     <ion-router-outlet />
   </ion-app>
 </template>
 
 <script setup lang="ts">
 import { IonApp, IonRouterOutlet } from '@ionic/vue';
+import ImpersonationBanner from '@/components/ImpersonationBanner.vue';
 </script>
+

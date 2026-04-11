@@ -538,6 +538,206 @@ class AdminController extends Controller
         }
     }
 
+    /**
+     * Actualización Masiva de Alumnos existentes.
+     * Usa la matrícula (enrollment_code) como clave para encontrar al alumno
+     * y solo actualiza los campos que vengan con datos en el archivo.
+     */
+    public function bulkUpdateStudents(Request $request, $school_id)
+    {
+        $school = School::findOrFail($school_id);
+
+        $request->validate([
+            'file' => 'required|file|mimes:csv,txt,xlsx,json|max:10240',
+        ]);
+
+        $file = $request->file('file');
+        $extension = $file->getClientOriginalExtension();
+        $data = [];
+
+        try {
+            if ($extension === 'json') {
+                $content = file_get_contents($file->getRealPath());
+                $data = json_decode($content, true);
+                if (!is_array($data)) throw new \Exception('Invalid JSON format');
+            } elseif ($extension === 'xlsx') {
+                if ($xlsx = SimpleXLSX::parse($file->getRealPath())) {
+                    $rows = iterator_to_array($xlsx->rows());
+                    if (count($rows) > 0) {
+                        $headers = array_shift($rows);
+                        foreach ($rows as $row) {
+                            if (count($headers) === count($row)) {
+                                $data[] = array_combine($headers, $row);
+                            }
+                        }
+                    }
+                } else {
+                    throw new \Exception(SimpleXLSX::parseError());
+                }
+            } else {
+                // CSV
+                if (($handle = fopen($file->getRealPath(), 'r')) !== FALSE) {
+                    $headers = fgetcsv($handle, 1000, ",");
+                    while (($row = fgetcsv($handle, 1000, ",")) !== FALSE) {
+                        $data[] = array_combine($headers, $row);
+                    }
+                    fclose($handle);
+                }
+            }
+
+            if (empty($data)) {
+                return response()->json(['success' => false, 'message' => 'El archivo está vacío o tiene un formato inválido.'], 422);
+            }
+
+            $results = [
+                'total' => count($data),
+                'updated' => 0,
+                'not_found' => 0,
+                'skipped' => 0,
+                'errors' => [],
+                'details' => [],
+            ];
+
+            // Same mapping as importStudents
+            $mapping = [
+                'matrícula' => 'enrollment_code',
+                'matricula' => 'enrollment_code',
+                'enrollment_code' => 'enrollment_code',
+                'nombre' => 'first_name',
+                'first_name' => 'first_name',
+                'apellidos' => 'last_name',
+                'last_name' => 'last_name',
+                'nivel' => 'school_level',
+                'school_level' => 'school_level',
+                'grado' => 'grade',
+                'grade' => 'grade',
+                'grupo' => 'group_letter',
+                'group_letter' => 'group_letter',
+                'turno' => 'shift',
+                'shift' => 'shift',
+                'email_tutor' => 'tutor_email',
+                'tutor_email' => 'tutor_email',
+                'email_tutor_2' => 'secondary_tutor_email',
+                'secondary_tutor_email' => 'secondary_tutor_email',
+            ];
+
+            // Fields that go directly on the student record
+            $studentFields = ['first_name', 'last_name', 'tutor_email', 'secondary_tutor_email'];
+            // Fields that affect classroom assignment
+            $classroomFields = ['school_level', 'grade', 'group_letter', 'shift'];
+
+            DB::beginTransaction();
+
+            foreach ($data as $index => $row) {
+                // Normalize keys
+                $normalizedRow = [];
+                foreach ($row as $key => $value) {
+                    $cleanKey = strtolower(trim($key));
+                    if (isset($mapping[$cleanKey])) {
+                        $val = trim($value);
+                        if ($mapping[$cleanKey] === 'shift') {
+                            $val = strtolower($val);
+                        }
+                        $normalizedRow[$mapping[$cleanKey]] = $val;
+                    }
+                }
+
+                // enrollment_code is required to identify the student
+                if (empty($normalizedRow['enrollment_code'])) {
+                    $results['errors'][] = "Fila " . ($index + 2) . ": La matrícula es obligatoria para identificar al alumno.";
+                    continue;
+                }
+
+                // Find existing student
+                $student = Student::where('school_id', $school->id)
+                    ->where('enrollment_code', $normalizedRow['enrollment_code'])
+                    ->first();
+
+                if (!$student) {
+                    $results['not_found']++;
+                    $results['errors'][] = "Fila " . ($index + 2) . ": No se encontró alumno con matrícula '{$normalizedRow['enrollment_code']}' en esta escuela.";
+                    continue;
+                }
+
+                // Build update data - only non-empty fields
+                $updateData = [];
+                $updatedFields = [];
+
+                foreach ($studentFields as $field) {
+                    if (isset($normalizedRow[$field]) && $normalizedRow[$field] !== '') {
+                        // Validate email fields
+                        if (in_array($field, ['tutor_email', 'secondary_tutor_email'])) {
+                            if (!filter_var($normalizedRow[$field], FILTER_VALIDATE_EMAIL)) {
+                                $results['errors'][] = "Fila " . ($index + 2) . ": El correo '{$normalizedRow[$field]}' no es válido.";
+                                continue 2; // Skip this whole row
+                            }
+                        }
+                        $updateData[$field] = $normalizedRow[$field];
+                        $updatedFields[] = $field;
+                    }
+                }
+
+                // Check if classroom needs updating
+                $classroomDataPresent = false;
+                $classroomData = [];
+                foreach ($classroomFields as $field) {
+                    if (isset($normalizedRow[$field]) && $normalizedRow[$field] !== '') {
+                        $classroomDataPresent = true;
+                        $classroomData[$field] = $normalizedRow[$field];
+                    }
+                }
+
+                if ($classroomDataPresent) {
+                    // Validate shift if present
+                    if (isset($classroomData['shift']) && !in_array($classroomData['shift'], ['matutino', 'vespertino', 'mixto'])) {
+                        $results['errors'][] = "Fila " . ($index + 2) . ": El turno '{$classroomData['shift']}' no es válido. Use: matutino, vespertino o mixto.";
+                        continue;
+                    }
+
+                    // Merge with existing classroom data for any missing fields
+                    $existingClassroom = $student->classroom;
+                    $fullClassroomData = [
+                        'school_id' => $school->id,
+                        'school_level' => $classroomData['school_level'] ?? ($existingClassroom ? $existingClassroom->school_level : null),
+                        'grade' => $classroomData['grade'] ?? ($existingClassroom ? $existingClassroom->grade : null),
+                        'group_letter' => $classroomData['group_letter'] ?? ($existingClassroom ? $existingClassroom->group_letter : null),
+                        'shift' => $classroomData['shift'] ?? ($existingClassroom ? $existingClassroom->shift : null),
+                    ];
+
+                    // Only reassign if all classroom fields are available
+                    if (!empty($fullClassroomData['school_level']) && !empty($fullClassroomData['grade']) && !empty($fullClassroomData['group_letter']) && !empty($fullClassroomData['shift'])) {
+                        $classroom = \App\Models\Classroom::firstOrCreate($fullClassroomData);
+                        $updateData['classroom_id'] = $classroom->id;
+                        $updatedFields = array_merge($updatedFields, array_keys($classroomData));
+                    }
+                }
+
+                if (empty($updateData)) {
+                    $results['skipped']++;
+                    continue;
+                }
+
+                $student->update($updateData);
+                $results['updated']++;
+                $results['details'][] = "Fila " . ($index + 2) . ": Matrícula '{$normalizedRow['enrollment_code']}' → Actualizado: " . implode(', ', $updatedFields);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Proceso de actualización finalizado. Alumnos actualizados: {$results['updated']}.",
+                'data' => $results
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al procesar el archivo: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function getLeaderboard(Request $request, $school_id = null)
     {
         $schoolId = $school_id ?: $this->getSchoolId($request);

@@ -136,30 +136,33 @@
       <!-- Left Column: Attendance List -->
       <div class="flex-grow xl:w-2/3 flex flex-col gap-6">
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
-          <div class="p-6 border-b border-gray-100 flex justify-between items-center">
-            <h3 class="text-xl font-black text-gray-900">Lista de Asistencia</h3>
-            <div class="flex items-center gap-2">
-               <button class="w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50 transition-colors">
-                  <ion-icon :icon="filterOutline" class="text-xl"></ion-icon>
-               </button>
-               <button class="w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50 transition-colors">
-                  <ion-icon :icon="ellipsisVerticalOutline" class="text-xl"></ion-icon>
-               </button>
+          <div class="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <h3 class="text-xl font-black text-gray-900 shrink-0">Lista de Asistencia</h3>
+            <div class="relative w-full sm:w-64">
+               <ion-icon :icon="searchOutline" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-base"></ion-icon>
+               <input 
+                 v-model="attendanceSearch"
+                 type="text" 
+                 placeholder="Buscar alumno..." 
+                 class="w-full bg-gray-50 border border-gray-200 text-gray-900 font-medium rounded-xl pl-9 pr-4 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue transition-all"
+               />
             </div>
           </div>
           
-          <div class="overflow-x-auto">
+          <div class="overflow-hidden">
             <table class="w-full text-left border-collapse">
               <thead>
                 <tr>
                   <th class="py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-widest bg-gray-50/50">Estudiante</th>
                   <th class="py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-widest bg-gray-50/50">Estado</th>
                   <th class="py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-widest bg-gray-50/50">Hora de Entrada</th>
-
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="student in students" :key="student.id" class="border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
+                <tr v-if="filteredAttendanceStudents.length === 0 && !loading">
+                  <td colspan="3" class="py-8 px-6 text-center text-gray-400 font-medium text-sm">No se encontraron alumnos con ese nombre.</td>
+                </tr>
+                <tr v-for="student in filteredAttendanceStudents" :key="student.id" class="border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
                   <td class="py-4 px-6">
                     <div class="flex items-center gap-4">
                       <div class="w-10 h-10 rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
@@ -194,7 +197,6 @@
                     <span class="text-sm font-medium text-gray-600" v-if="student.time">{{ student.time }}</span>
                     <span class="text-sm font-medium text-gray-400" v-else>-</span>
                   </td>
-
                 </tr>
               </tbody>
             </table>
@@ -292,10 +294,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { 
   bookOutline, swapHorizontalOutline, listOutline, peopleOutline, 
-  checkmarkOutline, timeOutline, closeOutline, filterOutline, 
+  checkmarkOutline, timeOutline, closeOutline, filterOutline, searchOutline,
   ellipsisVerticalOutline, createOutline, chatbubbleEllipsesOutline,
   megaphoneOutline, sendOutline, checkmarkCircleOutline, mailOutline,
   documentTextOutline, chevronDownOutline, refreshOutline, chevronForwardOutline
@@ -321,7 +323,17 @@ const stats = ref({
 });
 
 const students = ref<any[]>([]);
+const attendanceSearch = ref('');
 const recentActivity = ref<any[]>([]);
+
+const filteredAttendanceStudents = computed(() => {
+  if (!attendanceSearch.value) return students.value;
+  const q = attendanceSearch.value.toLowerCase();
+  return students.value.filter((s: any) =>
+    (s.name || '').toLowerCase().includes(q) ||
+    (s.id_number || '').toLowerCase().includes(q)
+  );
+});
 const messageHistory = ref<any[]>([]);
 const historyLoading = ref(false);
 

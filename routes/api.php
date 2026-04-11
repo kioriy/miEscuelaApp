@@ -44,6 +44,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/schools/{id}', [AdminController::class, 'showSchool']);
         Route::put('/schools/{id}', [AdminController::class, 'updateSchool']);
         Route::post('/schools/{id}/students/import', [AdminController::class, 'importStudents']);
+        Route::post('/schools/{id}/students/bulk-update', [AdminController::class, 'bulkUpdateStudents']);
 
         Route::get('/users', [AdminController::class, 'getUsers']);
         Route::get('/users/{id}', [AdminController::class, 'showUser']);
@@ -99,5 +100,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/teacher/messaging/context', [\App\Http\Controllers\Api\Teacher\MessagingController::class, 'getTeacherContext']);
         Route::get('/teacher/messaging/history', [\App\Http\Controllers\Api\Teacher\MessagingController::class, 'getSentMessages']);
         Route::post('/teacher/messaging/send', [\App\Http\Controllers\Api\Teacher\MessagingController::class, 'sendMessage']);
+
+        // Impersonation (Super Admin only)
+        Route::post('/impersonate/{id}', [\App\Http\Controllers\Api\ImpersonationController::class, 'startImpersonating']);
+        Route::post('/stop-impersonating', [\App\Http\Controllers\Api\ImpersonationController::class, 'stopImpersonating']);
     });
 });

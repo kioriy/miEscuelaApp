@@ -121,16 +121,16 @@
           </div>
 
           <!-- Table -->
-          <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse whitespace-nowrap">
+          <div class="overflow-hidden">
+            <table class="w-full text-left border-collapse table-fixed">
               <thead>
                 <tr class="bg-gray-50/30 text-[10px] font-black tracking-[0.2em] text-gray-400 uppercase border-b border-gray-50">
-                  <th class="p-5 pl-8">Estudiante</th>
-                  <th class="p-5">Matrícula</th>
-                  <th class="p-5">Grado / Grupo</th>
-                  <th class="p-5">Tutor de Contacto</th>
-                  <th class="p-5">Foto</th>
-                  <th class="p-5 pr-8 text-right">Acciones</th>
+                  <th class="p-3 pl-6" style="width: 25%">Estudiante</th>
+                  <th class="p-3" style="width: 14%">Matrícula</th>
+                  <th class="p-3" style="width: 12%">Grado</th>
+                  <th class="p-3" style="width: 22%">Tutor</th>
+                  <th class="p-3" style="width: 10%">Foto</th>
+                  <th class="p-3 pr-6 text-right" style="width: 17%">Acciones</th>
                 </tr>
               </thead>
               <tbody class="text-sm">
@@ -141,50 +141,50 @@
                   <td colspan="6" class="p-12 text-center text-gray-400 font-medium">No se encontraron estudiantes con los filtros aplicados.</td>
                 </tr>
                 <tr v-else v-for="student in filteredStudents" :key="student.id" class="border-b border-gray-50 hover:bg-blue-50/30 transition-all group">
-                  <td class="p-5 pl-8">
-                    <div class="flex items-center gap-4">
-                      <div class="w-12 h-12 rounded-2xl bg-orange-100 flex items-center justify-center text-brand-blue font-black border-2 border-white shadow-sm overflow-hidden shrink-0 group-hover:scale-110 transition-transform">
+                  <td class="p-3 pl-6">
+                    <div class="flex items-center gap-3 min-w-0">
+                      <div class="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center text-brand-blue font-black border border-white shadow-sm overflow-hidden shrink-0 group-hover:scale-110 transition-transform">
                         <img v-if="student.photo_url" :src="student.photo_url" class="w-full h-full object-cover" />
-                        <span v-else class="text-lg">{{ student.first_name[0] }}{{ student.last_name[0] }}</span>
+                        <span v-else class="text-sm">{{ student.first_name[0] }}{{ student.last_name[0] }}</span>
                       </div>
-                      <div>
-                        <p class="font-black text-gray-900 leading-tight mb-0.5">{{ student.first_name }} {{ student.last_name }}</p>
-                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{{ student.classroom?.shift }}</p>
+                      <div class="min-w-0">
+                        <p class="font-black text-gray-900 text-[13px] leading-tight mb-0.5 truncate">{{ student.first_name }} {{ student.last_name }}</p>
+                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ student.classroom?.shift }}</p>
                       </div>
                     </div>
                   </td>
-                  <td class="p-5 font-bold text-brand-blue text-[13px] tracking-tight">
-                    {{ student.enrollment_code }}
+                  <td class="p-3">
+                    <span class="font-bold text-brand-blue text-[12px] tracking-tight">{{ student.enrollment_code }}</span>
                   </td>
-                  <td class="p-5">
-                    <span class="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-lg font-black text-[12px] border border-indigo-100">
+                  <td class="p-3">
+                    <span class="bg-indigo-50 text-indigo-600 px-2.5 py-0.5 rounded-lg font-black text-[11px] border border-indigo-100 whitespace-nowrap">
                       {{ student.classroom?.grade }}º {{ student.classroom?.group_letter }}
                     </span>
                   </td>
-                  <td class="p-5">
-                    <div class="flex flex-col">
-                      <p class="text-[13px] font-bold text-gray-700">{{ student.tutor_email || 'Sin vincular' }}</p>
+                  <td class="p-3">
+                    <div class="min-w-0">
+                      <p class="text-[12px] font-bold text-gray-700 truncate">{{ student.tutor_email || 'Sin vincular' }}</p>
                       <p class="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{{ student.secondary_tutor_email ? '2 Contactos' : '1 Contacto' }}</p>
                     </div>
                   </td>
-                  <td class="p-5">
-                    <span v-if="student.photo_path" class="inline-flex items-center gap-1.5 text-emerald-600 font-black text-[11px] uppercase tracking-widest">
-                      <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> Registrada
+                  <td class="p-3">
+                    <span v-if="student.photo_path" class="inline-flex items-center gap-1 text-emerald-600 font-black text-[10px] uppercase tracking-wider">
+                      <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> Sí
                     </span>
-                    <span v-else class="inline-flex items-center gap-1.5 text-orange-400 font-black text-[11px] uppercase tracking-widest">
-                       <div class="w-1.5 h-1.5 rounded-full bg-orange-400"></div> Pendiente
+                    <span v-else class="inline-flex items-center gap-1 text-orange-400 font-black text-[10px] uppercase tracking-wider">
+                       <div class="w-1.5 h-1.5 rounded-full bg-orange-400"></div> No
                     </span>
                   </td>
-                  <td class="p-5 pr-8">
-                    <div class="flex items-center justify-end gap-2">
-                      <button @click="$router.push(`/admin/students/${student.id}`)" class="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-50 text-gray-500 hover:bg-indigo-500 hover:text-white transition-all shadow-sm" title="Ver detalle">
-                        <ion-icon :icon="eyeOutline" class="text-lg"></ion-icon>
+                  <td class="p-3 pr-6">
+                    <div class="flex items-center justify-end gap-1.5">
+                      <button @click="$router.push(`/admin/students/${student.id}`)" class="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-50 text-gray-500 hover:bg-indigo-500 hover:text-white transition-all shadow-sm" title="Ver detalle">
+                        <ion-icon :icon="eyeOutline" class="text-base"></ion-icon>
                       </button>
-                      <button @click="$router.push(`/admin/students/${student.id}/edit`)" class="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-50 text-gray-500 hover:bg-brand-blue hover:text-white transition-all shadow-sm" title="Editar">
-                        <ion-icon :icon="createOutline" class="text-lg"></ion-icon>
+                      <button @click="$router.push(`/admin/students/${student.id}/edit`)" class="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-50 text-gray-500 hover:bg-brand-blue hover:text-white transition-all shadow-sm" title="Editar">
+                        <ion-icon :icon="createOutline" class="text-base"></ion-icon>
                       </button>
-                      <button @click="confirmDelete(student)" class="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-50 text-gray-500 hover:bg-red-500 hover:text-white transition-all shadow-sm" title="Eliminar">
-                        <ion-icon :icon="trashOutline" class="text-lg"></ion-icon>
+                      <button @click="confirmDelete(student)" class="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-50 text-gray-500 hover:bg-red-500 hover:text-white transition-all shadow-sm" title="Eliminar">
+                        <ion-icon :icon="trashOutline" class="text-base"></ion-icon>
                       </button>
                     </div>
                   </td>

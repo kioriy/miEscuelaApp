@@ -1,9 +1,9 @@
 <template>
   <ion-page>
-    <div class="flex h-screen bg-gray-50 font-sans text-gray-900 overflow-hidden w-full relative">
+    <div class="flex h-screen bg-gray-50 font-sans text-gray-900 overflow-hidden w-full relative" :style="isImpersonating ? 'padding-top: 52px' : ''">
       
       <!-- Mobile Header & Hamburger -->
-      <div class="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-100 flex items-center justify-between px-4 z-40 shadow-sm" style="padding-top: env(safe-area-inset-top, 0px); height: calc(4rem + env(safe-area-inset-top, 0px));">
+      <div class="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-100 flex items-center justify-between px-4 z-40 shadow-sm" :style="`padding-top: env(safe-area-inset-top, 0px); height: calc(4rem + env(safe-area-inset-top, 0px)); ${isImpersonating ? 'top: 52px' : ''}`">
         <div class="flex items-center gap-2">
             <img src="@/assets/images/logo.png" alt="miEscuelaApp" class="w-8 h-8 object-contain" />
             <h2 class="text-lg font-black text-gray-900 tracking-tight leading-none italic uppercase">miEscuelaApp</h2>
@@ -108,7 +108,7 @@
 
       <!-- Main Content Area -->
       <!-- Add pt-16 on mobile to account for fixed header, enable overflow-y-auto -->
-      <main class="flex-1 overflow-y-auto w-full h-full relative lg:pt-0 bg-gray-50 flex flex-col" style="padding-top: calc(4rem + env(safe-area-inset-top, 0px));">
+      <main class="flex-1 overflow-y-auto w-full h-full relative lg:pt-0 bg-gray-50 flex flex-col" :style="`padding-top: calc(4rem + env(safe-area-inset-top, 0px));`">
         
         <!-- Teacher Portal Specific Header (Visible only for teachers on Desktop) -->
         <div v-if="currentProfile === 'teacher'" class="hidden lg:flex items-center justify-between px-10 py-4 bg-white border-b border-gray-100 shrink-0">
@@ -162,10 +162,15 @@ const closeMobileMenu = () => {
 };
 
 const currentProfile = ref('user');
+const isImpersonating = ref(false);
 
 onMounted(async () => {
   const profile = await storage.get('current_profile');
   if (profile) currentProfile.value = profile;
+  
+  // Check if we are impersonating
+  const adminToken = await storage.get('impersonation_admin_token');
+  if (adminToken) isImpersonating.value = true;
 });
 
 const isAdmin = computed(() => currentProfile.value === 'super_admin');

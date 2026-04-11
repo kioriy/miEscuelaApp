@@ -154,10 +154,7 @@ const selectProfile = async (profile: string) => {
 };
 
 const logout = async () => {
-  await storage.remove('auth_token');
-  await storage.remove('auth_user');
-  await storage.remove('available_profiles');
-  await storage.remove('current_profile');
+  await storage.clear();
   window.location.href = '/login';
 };
 
