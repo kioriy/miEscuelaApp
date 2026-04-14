@@ -453,43 +453,58 @@ const handleScan = async () => {
     return;
   }
 
+  // Interceptar Credencial de Tutor (Prefijo T + código numérico)
+  // Implementación temporal: la T indica tutor, el código restante es el enrollment_code del alumno
+  // TODO: En la siguiente versión, el código será el ID de authorized_persons
+  let isTutorScan = false;
+  if (/^T\d+$/i.test(rawVal)) {
+    isTutorScan = true;
+    rawVal = rawVal.substring(1); // Quitar la T, dejar solo el enrollment_code
+    console.log(`[Scan] 🎫 Credencial de Tutor detectada. Código de alumno extraído: ${rawVal}`);
+  }
+
   // Obtenemos los posibles IDs dependiendo de las configuraciones de las escuelas vinculadas
   let possibleIds: string[] = [];
   
-  // Extraemos la logica dependiendo del tipo configurado
-  const parseQR = (rawCode: string, scanType: string): string => {
-    switch(scanType) {
-      case 'hash_split':
-        return rawCode.includes('#') ? rawCode.split('#')[1] : rawCode;
-      case 'query_param':
-        try {
-          const urlStr = rawCode.startsWith('http') ? rawCode : 'http://' + rawCode;
-          const url = new URL(urlStr);
-          return url.searchParams.get('id') || rawCode;
-        } catch(e) { return rawCode; }
-      case 'sep_url':
-        // Ej: https://site.com/qrec/218731/qwerty
-        const cleanStr = rawCode.replace(/\/+$/, '');
-        const parts = cleanStr.split('/');
-        return parts.length >= 2 ? parts[parts.length - 2] : rawCode;
-      case 'raw_id':
-      default:
-        return rawCode;
-    }
-  };
-
-  // Iterar por cada escuela configurada en el quiosco
-  if (schoolInfo.value.schools && schoolInfo.value.schools.length > 0) {
-    schoolInfo.value.schools.forEach((s: any) => {
-      const scanType = s.qr_scan_type || 'raw_id';
-      const parsed = parseQR(rawVal, scanType).toUpperCase().trim();
-      if (!possibleIds.includes(parsed)) {
-          possibleIds.push(parsed);
-      }
-    });
+  if (isTutorScan) {
+    // Credencial de tutor: usar el código extraído directamente (sin parseo QR)
+    possibleIds.push(rawVal.toUpperCase().trim());
   } else {
-    // Fallback: solo enviar directo
-    possibleIds.push(rawVal.toUpperCase());
+    // Extraemos la logica dependiendo del tipo configurado
+    const parseQR = (rawCode: string, scanType: string): string => {
+      switch(scanType) {
+        case 'hash_split':
+          return rawCode.includes('#') ? rawCode.split('#')[1] : rawCode;
+        case 'query_param':
+          try {
+            const urlStr = rawCode.startsWith('http') ? rawCode : 'http://' + rawCode;
+            const url = new URL(urlStr);
+            return url.searchParams.get('id') || rawCode;
+          } catch(e) { return rawCode; }
+        case 'sep_url':
+          // Ej: https://site.com/qrec/218731/qwerty
+          const cleanStr = rawCode.replace(/\/+$/, '');
+          const parts = cleanStr.split('/');
+          return parts.length >= 2 ? parts[parts.length - 2] : rawCode;
+        case 'raw_id':
+        default:
+          return rawCode;
+      }
+    };
+
+    // Iterar por cada escuela configurada en el quiosco
+    if (schoolInfo.value.schools && schoolInfo.value.schools.length > 0) {
+      schoolInfo.value.schools.forEach((s: any) => {
+        const scanType = s.qr_scan_type || 'raw_id';
+        const parsed = parseQR(rawVal, scanType).toUpperCase().trim();
+        if (!possibleIds.includes(parsed)) {
+            possibleIds.push(parsed);
+        }
+      });
+    } else {
+      // Fallback: solo enviar directo
+      possibleIds.push(rawVal.toUpperCase());
+    }
   }
 
   console.log(`[Scan] Raw: ${rawVal} | Intentando las matrículas: ${possibleIds.join(', ')} ...`);

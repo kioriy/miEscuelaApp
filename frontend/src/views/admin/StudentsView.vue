@@ -157,9 +157,14 @@
                     <span class="font-bold text-brand-blue text-[12px] tracking-tight">{{ student.enrollment_code }}</span>
                   </td>
                   <td class="p-3">
-                    <span class="bg-indigo-50 text-indigo-600 px-2.5 py-0.5 rounded-lg font-black text-[11px] border border-indigo-100 whitespace-nowrap">
-                      {{ student.classroom?.grade }}º {{ student.classroom?.group_letter }}
-                    </span>
+                    <div>
+                      <span class="bg-indigo-50 text-indigo-600 px-2.5 py-0.5 rounded-lg font-black text-[11px] border border-indigo-100 whitespace-nowrap">
+                        {{ student.classroom?.grade }}º {{ student.classroom?.group_letter }}
+                      </span>
+                      <p class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5 truncate">
+                        {{ student.classroom?.school_level }}
+                      </p>
+                    </div>
                   </td>
                   <td class="p-3">
                     <div class="min-w-0">
@@ -265,7 +270,8 @@ const photoPercentage = computed(() => {
 
 const grades = computed(() => [...new Set(students.value.filter(s => s.classroom).map(s => s.classroom.grade))].sort());
 const groups = computed(() => [...new Set(students.value.filter(s => s.classroom).map(s => s.classroom.group_letter))].sort());
-const uniqueGroups = computed(() => [...new Set(students.value.filter(s => s.classroom).map(s => `${s.classroom.grade}${s.classroom.group_letter}`))]);
+// uniqueGroups: counts distinct classroom IDs (accounts for multi-level schools where same grade+letter exist at different levels)
+const uniqueGroups = computed(() => [...new Set(students.value.filter(s => s.classroom).map(s => s.classroom_id))]);
 
 const filteredStudents = computed(() => {
   return students.value.filter(s => {

@@ -214,11 +214,13 @@
               </div>
 
               <div class="space-y-6 flex-grow">
-                <div v-for="group in directorStats.groupStats" :key="group.grade + group.group_letter" class="flex flex-col gap-2">
+                <div v-for="group in directorStats.groupStats" :key="group.id" class="flex flex-col gap-2">
                   <div class="flex justify-between items-end">
                     <div>
                       <span class="text-[15px] font-black text-gray-900">{{ group.grade }}º {{ group.group_letter }}</span>
-                      <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{{ group.present }}/{{ group.total }} Estudiantes</p>
+                      <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                        {{ group.school_level }} · {{ group.present }}/{{ group.total }} Estudiantes
+                      </p>
                     </div>
                     <span :class="group.percentage >= 100 ? 'text-green-600' : 'text-gray-500'" class="text-[11px] font-black uppercase tracking-widest">
                       {{ group.percentage >= 100 ? 'Completo' : group.percentage + '% Asistencia' }}

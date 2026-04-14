@@ -154,7 +154,7 @@
           </div>
         </div>
 
-        <!-- History Preview (Only for Directors for now or adjust logic) -->
+        <!-- History Preview (Only for Directors) -->
         <div v-if="isDirector" class="px-4 md:px-8 mt-12 mb-12">
           <div class="max-w-4xl mx-auto">
             <h3 class="text-xl font-black text-gray-900 tracking-tight mb-6 flex items-center gap-2">
@@ -171,20 +171,66 @@
             </div>
 
             <div v-else class="space-y-4">
-              <div v-for="msg in history" :key="msg.id" class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
-                <div class="flex justify-between items-start mb-2">
-                  <h4 class="font-black text-gray-900 leading-tight">{{ msg.title }}</h4>
-                  <span class="text-[10px] font-black uppercase tracking-widest text-gray-400">{{ msg.time_ago }}</span>
-                </div>
-                <p class="text-sm text-gray-600 font-medium mb-3 line-clamp-2">{{ msg.content }}</p>
-                <div class="flex items-center gap-2">
-                  <span 
-                    :class="msg.is_general ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-blue-50 text-brand-blue border-blue-100'"
-                    class="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg border"
-                  >
-                    {{ msg.is_general ? 'Todo el plantel' : 'Segmentado' }}
-                  </span>
-                  <span class="text-[11px] font-bold text-gray-400">Dirigido a: {{ msg.recipients }}</span>
+              <div 
+                v-for="msg in history" 
+                :key="msg.id" 
+                class="msg-card bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden"
+              >
+                <!-- Card Header -->
+                <div class="p-5">
+                  <div class="flex justify-between items-start gap-3 mb-3">
+                    <!-- Title + timestamp -->
+                    <div class="flex-1 min-w-0">
+                      <h4 class="font-black text-gray-900 leading-tight">{{ msg.title }}</h4>
+                      <span class="text-[10px] font-bold text-gray-400 mt-0.5 block">{{ msg.time_ago }}</span>
+                    </div>
+                    <!-- Actions -->
+                    <div class="flex items-center gap-2 shrink-0">
+                      <button
+                        @click="openEditModal(msg)"
+                        class="edit-btn flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-50 hover:bg-blue-50 border border-gray-100 hover:border-blue-200 text-gray-400 hover:text-brand-blue transition-all text-xs font-bold"
+                        title="Editar mensaje"
+                      >
+                        <ion-icon :icon="createOutline" class="text-base"></ion-icon>
+                        Editar
+                      </button>
+                      <button
+                        @click="toggleExpand(msg.id)"
+                        class="expand-btn flex items-center justify-center w-8 h-8 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-100 text-gray-400 transition-all"
+                        :title="expandedIds.has(msg.id) ? 'Colapsar' : 'Ver mensaje completo'"
+                      >
+                        <ion-icon 
+                          :icon="chevronDownOutline" 
+                          class="text-base transition-transform duration-300"
+                          :class="expandedIds.has(msg.id) ? 'rotate-180' : ''"
+                        ></ion-icon>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Content preview (always visible, 2 lines) -->
+                  <p 
+                    class="text-sm text-gray-600 font-medium leading-relaxed msg-preview"
+                    :class="expandedIds.has(msg.id) ? 'expanded' : ''"
+                  >{{ msg.content }}</p>
+
+                  <!-- Read more hint when collapsed -->
+                  <button 
+                    v-if="!expandedIds.has(msg.id)"
+                    @click="toggleExpand(msg.id)"
+                    class="text-xs font-bold text-brand-blue mt-1 hover:underline"
+                  >Ver mensaje completo</button>
+
+                  <!-- Tags -->
+                  <div class="flex items-center gap-2 mt-3">
+                    <span 
+                      :class="msg.is_general ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-blue-50 text-brand-blue border-blue-100'"
+                      class="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg border"
+                    >
+                      {{ msg.is_general ? 'Todo el plantel' : 'Segmentado' }}
+                    </span>
+                    <span class="text-[11px] font-bold text-gray-400">Dirigido a: {{ msg.recipients }}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -211,6 +257,78 @@
         </div>
       </ion-modal>
 
+      <!-- Edit Message Modal -->
+      <ion-modal
+        :is-open="showEditModal"
+        @didDismiss="closeEditModal"
+        class="center-modal edit-modal"
+      >
+        <div class="modal-content bg-white flex flex-col" style="max-height: 90vh; overflow-y: auto;">
+          <!-- Modal Header -->
+          <div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+                <ion-icon :icon="createOutline" class="text-xl text-brand-blue"></ion-icon>
+              </div>
+              <div>
+                <h2 class="text-lg font-black text-gray-900 leading-tight">Editar Mensaje</h2>
+                <p class="text-xs text-gray-400 font-medium">Solo título y contenido</p>
+              </div>
+            </div>
+            <button @click="closeEditModal" class="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors">
+              <ion-icon :icon="closeCircleOutline" class="text-xl"></ion-icon>
+            </button>
+          </div>
+
+          <!-- Edit Form -->
+          <div class="px-6 py-5 space-y-5">
+            <div>
+              <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Asunto / Título</label>
+              <input
+                v-model="editForm.title"
+                type="text"
+                class="w-full bg-gray-50 border border-gray-200 text-gray-900 font-bold rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue"
+                placeholder="Título del mensaje"
+              />
+            </div>
+            <div>
+              <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Contenido de la Circular</label>
+              <textarea
+                v-model="editForm.content"
+                rows="8"
+                class="w-full bg-gray-50 border border-gray-200 text-gray-900 font-medium rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue resize-none"
+                placeholder="Contenido del mensaje..."
+              ></textarea>
+            </div>
+
+            <!-- Warning note -->
+            <div class="bg-amber-50 border border-amber-100 rounded-xl p-3 flex gap-2 text-amber-700">
+              <ion-icon :icon="alertCircleOutline" class="text-lg shrink-0 mt-0.5"></ion-icon>
+              <p class="text-xs font-bold leading-relaxed">Los destinatarios (alcance) no pueden modificarse. Solo se actualiza el texto del mensaje.</p>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="px-6 pb-6 flex gap-3">
+            <button
+              @click="closeEditModal"
+              class="flex-1 py-3 rounded-2xl border-2 border-gray-100 text-gray-600 font-bold hover:bg-gray-50 transition-all"
+            >
+              Cancelar
+            </button>
+            <button
+              @click="saveEdit"
+              :disabled="editLoading || !editForm.title.trim() || !editForm.content.trim()"
+              class="flex-1 bg-brand-blue text-white font-black py-3 rounded-2xl shadow-lg shadow-blue-500/20 hover:bg-blue-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              <div v-if="editLoading" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <ion-icon v-else :icon="checkmarkCircle" class="text-lg"></ion-icon>
+              {{ editLoading ? 'Guardando...' : 'Guardar Cambios' }}
+            </button>
+          </div>
+        </div>
+      </ion-modal>
+
     </ion-content>
   </ion-page>
 </template>
@@ -229,7 +347,8 @@ import {
   closeCircleOutline,
   chevronDownOutline,
   alertCircleOutline,
-  timeOutline
+  timeOutline,
+  createOutline
 } from 'ionicons/icons';
 import api from '@/services/api';
 import { storage } from '@/services/storage';
@@ -239,6 +358,53 @@ const router = useRouter();
 const loading = ref(false);
 const historyLoading = ref(false);
 const showSuccessModal = ref(false);
+
+// ── Expand / collapse state for history cards ──────────────────────────────
+const expandedIds = ref<Set<number>>(new Set());
+const toggleExpand = (id: number) => {
+  const s = new Set(expandedIds.value);
+  s.has(id) ? s.delete(id) : s.add(id);
+  expandedIds.value = s;
+};
+
+// ── Edit modal state ────────────────────────────────────────────────────────
+const showEditModal = ref(false);
+const editLoading = ref(false);
+const editTarget = ref<any>(null);
+const editForm = ref({ title: '', content: '' });
+
+const openEditModal = (msg: any) => {
+  editTarget.value = msg;
+  editForm.value = { title: msg.title, content: msg.content };
+  showEditModal.value = true;
+};
+
+const closeEditModal = () => {
+  showEditModal.value = false;
+  editTarget.value = null;
+};
+
+const saveEdit = async () => {
+  if (!editTarget.value || !editForm.value.title.trim() || !editForm.value.content.trim()) return;
+  try {
+    editLoading.value = true;
+    const res = await api.put(`/admin/director/messaging/${editTarget.value.id}`, editForm.value);
+    if (res.data.success) {
+      // Update locally for instant feedback
+      const idx = history.value.findIndex((m: any) => m.id === editTarget.value.id);
+      if (idx !== -1) {
+        history.value[idx].title   = editForm.value.title;
+        history.value[idx].content = editForm.value.content;
+      }
+      closeEditModal();
+    }
+  } catch (error: any) {
+    console.error('Error updating message:', error);
+    alert(error.response?.data?.message || 'Error al actualizar el mensaje');
+  } finally {
+    editLoading.value = false;
+  }
+};
 
 const classrooms = ref<any[]>([]);
 const students = ref<any[]>([]);
@@ -377,6 +543,40 @@ const closeSuccess = () => {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Message history cards */
+.msg-card {
+  transition: box-shadow 0.2s ease;
+}
+
+/* Content preview: 2-line clamp when collapsed, full when expanded */
+.msg-preview {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  transition: max-height 0.35s ease, -webkit-line-clamp 0s;
+  max-height: 3.2em;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.msg-preview.expanded {
+  -webkit-line-clamp: unset;
+  max-height: 2000px; /* large enough for any message */
+  overflow: visible;
+}
+
+/* Rotation for expand chevron */
+.rotate-180 {
+  transform: rotate(180deg);
+}
+
+/* Edit button hover */
+.edit-btn:active {
+  transform: scale(0.96);
+}
+
+/* Center modals */
 ion-modal.center-modal {
   --width: 90%;
   --max-width: 440px;
@@ -387,5 +587,10 @@ ion-modal.center-modal {
 
 ion-modal.center-modal .modal-content {
   border-radius: 32px;
+}
+
+/* Edit modal is a bit wider */
+ion-modal.edit-modal {
+  --max-width: 520px;
 }
 </style>

@@ -89,6 +89,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/director/messaging/context', [\App\Http\Controllers\Api\Admin\DirectorMessagingController::class, 'getContext']);
         Route::post('/director/messaging/send', [\App\Http\Controllers\Api\Admin\DirectorMessagingController::class, 'sendMessage']);
         Route::get('/director/messaging/history', [\App\Http\Controllers\Api\Admin\DirectorMessagingController::class, 'getSentMessages']);
+        Route::put('/director/messaging/{id}', [\App\Http\Controllers\Api\Admin\DirectorMessagingController::class, 'updateMessage']);
 
         // Teacher Portal
         Route::get('/teacher/dashboard', [TeacherDashboardController::class, 'getDashboardInfo']);

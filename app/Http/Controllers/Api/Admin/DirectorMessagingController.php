@@ -135,6 +135,40 @@ class DirectorMessagingController extends Controller
     }
 
     /**
+     * Update an existing announcement (title and content only).
+     * The director can only edit announcements they created for their school.
+     */
+    public function updateMessage(Request $request, $id)
+    {
+        $user = $request->user();
+        $schoolId = $this->getSchoolId($request);
+
+        if (!$schoolId) {
+            return response()->json(['success' => false, 'message' => 'No school context found'], 403);
+        }
+
+        $request->validate([
+            'title'   => 'required|string|max:150',
+            'content' => 'required|string',
+        ]);
+
+        $announcement = Announcement::where('id', $id)
+            ->where('school_id', $schoolId)
+            ->where('created_by_user_id', $user->id)
+            ->firstOrFail();
+
+        $announcement->update([
+            'title'   => $request->title,
+            'content' => $request->content,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Mensaje actualizado correctamente.',
+        ]);
+    }
+
+    /**
      * Get the history of messages sent by the director.
      */
     public function getSentMessages(Request $request)

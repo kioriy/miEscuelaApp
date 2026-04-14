@@ -87,12 +87,52 @@ class ParentDashboardController extends Controller
                 ];
             });
 
-        // 3. Fetch Announcements — only today's messages for the dashboard
-        $announcements = DB::table('announcements')
-            ->whereDate('created_at', now()->toDateString())
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function ($ann) {
+        // 3. Fetch Announcements — only today's messages for the dashboard, scoped to the parent's school
+        // Derive school_id from the parent's children (a parent belongs to one school)
+        $parentSchoolId = $children->first()?->school_id ?? null;
+
+        $announcementsQuery = DB::table('announcements')
+            ->whereDate('announcements.created_at', now()->toDateString())
+            ->orderBy('announcements.created_at', 'desc');
+
+        if ($parentSchoolId) {
+            $announcementsQuery->where('announcements.school_id', $parentSchoolId);
+        }
+
+        // Filter: show general (all_school) messages OR segmented messages that target this parent's children
+        $announcementsQuery->where(function ($q) use ($studentIds, $children) {
+            // Always show general school-wide announcements
+            $q->where('announcements.is_general', true);
+
+            // Also show segmented announcements that target one of this parent's children's groups or the child directly
+            if (!empty($studentIds)) {
+                $q->orWhereExists(function ($sub) use ($studentIds, $children) {
+                    $sub->select(DB::raw(1))
+                        ->from('announcement_targets')
+                        ->whereColumn('announcement_targets.announcement_id', 'announcements.id')
+                        ->where(function ($tq) use ($studentIds, $children) {
+                            // Target is this specific child
+                            $tq->whereIn('announcement_targets.student_id', $studentIds);
+
+                            // OR target is a group/grade that contains one of this parent's children
+                            foreach ($children as $child) {
+                                if ($child->classroom_id) {
+                                    $classroom = $child->classroom;
+                                    if ($classroom) {
+                                        $tq->orWhere(function ($gq) use ($classroom) {
+                                            $gq->where('announcement_targets.grade', $classroom->grade)
+                                               ->where('announcement_targets.group_letter', $classroom->group_letter)
+                                               ->whereNull('announcement_targets.student_id');
+                                        });
+                                    }
+                                }
+                            }
+                        });
+                });
+            }
+        });
+
+        $announcements = $announcementsQuery->get()->map(function ($ann) {
                 $parsed = Carbon::parse($ann->created_at);
                 $timeAgo = $parsed->diffForHumans();
 
@@ -152,12 +192,59 @@ class ParentDashboardController extends Controller
 
     /**
      * Get all announcements (paginated) for the full messages view.
+     * Only returns announcements scoped to the parent's school, respecting targeting.
      */
     public function getAnnouncements(Request $request)
     {
-        $announcements = DB::table('announcements')
-            ->orderBy('created_at', 'desc')
-            ->paginate(20);
+        $user = $request->user();
+
+        // Resolve the parent's children to determine school and classrooms
+        $children = Student::with('classroom')
+            ->where(function ($query) use ($user) {
+                $query->where('tutor_email', $user->email)
+                      ->orWhere('secondary_tutor_email', $user->email);
+            })
+            ->get();
+
+        $studentIds    = $children->pluck('id')->toArray();
+        $parentSchoolId = $children->first()?->school_id ?? null;
+
+        $query = DB::table('announcements')
+            ->orderBy('announcements.created_at', 'desc');
+
+        // Restrict to this school only
+        if ($parentSchoolId) {
+            $query->where('announcements.school_id', $parentSchoolId);
+        }
+
+        // Show general announcements OR segmented ones that apply to this parent's children
+        $query->where(function ($q) use ($studentIds, $children) {
+            $q->where('announcements.is_general', true);
+
+            if (!empty($studentIds)) {
+                $q->orWhereExists(function ($sub) use ($studentIds, $children) {
+                    $sub->select(DB::raw(1))
+                        ->from('announcement_targets')
+                        ->whereColumn('announcement_targets.announcement_id', 'announcements.id')
+                        ->where(function ($tq) use ($studentIds, $children) {
+                            $tq->whereIn('announcement_targets.student_id', $studentIds);
+
+                            foreach ($children as $child) {
+                                if ($child->classroom_id && $child->classroom) {
+                                    $classroom = $child->classroom;
+                                    $tq->orWhere(function ($gq) use ($classroom) {
+                                        $gq->where('announcement_targets.grade', $classroom->grade)
+                                           ->where('announcement_targets.group_letter', $classroom->group_letter)
+                                           ->whereNull('announcement_targets.student_id');
+                                    });
+                                }
+                            }
+                        });
+                });
+            }
+        });
+
+        $announcements = $query->paginate(20);
 
         $announcements->getCollection()->transform(function ($ann) {
             $parsed = Carbon::parse($ann->created_at);
@@ -170,20 +257,20 @@ class ParentDashboardController extends Controller
             }
 
             return [
-                'id' => $ann->id,
-                'title' => $ann->title,
-                'message' => $ann->content,
+                'id'       => $ann->id,
+                'title'    => $ann->title,
+                'message'  => $ann->content,
                 'time_ago' => $parsed->diffForHumans(),
-                'date' => $parsed->format('d M, Y'),
-                'time' => $parsed->format('g:i A'),
-                'icon' => $icon,
-                'color' => $color
+                'date'     => $parsed->format('d M, Y'),
+                'time'     => $parsed->format('g:i A'),
+                'icon'     => $icon,
+                'color'    => $color
             ];
         });
 
         return response()->json([
             'success' => true,
-            'data' => $announcements
+            'data'    => $announcements
         ]);
     }
 
